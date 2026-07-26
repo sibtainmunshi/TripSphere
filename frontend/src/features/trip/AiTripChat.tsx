@@ -1,6 +1,18 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Compass, Landmark, Mountain, Save, Send, Waves } from 'lucide-react'
+import {
+  Compass,
+  Feather,
+  IndianRupee,
+  Landmark,
+  Mountain,
+  PartyPopper,
+  Save,
+  Send,
+  Users,
+  Waves,
+  Zap,
+} from 'lucide-react'
 import logo from '@/assets/logo.svg'
 import { Avatar } from '@/components/Avatar'
 import { useAuthStore } from '@/store/authStore'
@@ -39,6 +51,46 @@ const STARTER_SUGGESTIONS = [
   { label: 'Cultural city break', icon: Landmark, text: 'A cultural city trip for 2 people, budget around ₹50,000' },
   { label: 'Surprise me', icon: Compass, text: 'Surprise me with a good destination for 3 people, budget around ₹30,000' },
 ]
+
+// Quick taps for whichever slot Gemini still needs — still real messages
+// sent through the same chat (handleSend), just saves typing for answers
+// that are naturally a pick from a short list rather than free text. Since
+// Gemini fills slots in whatever order the conversation goes (not a fixed
+// sequence), this always offers taps for the first slot still missing —
+// tapping one that isn't literally what Gemini just asked is harmless, it
+// still lands as a normal answer and Gemini picks up from there.
+const STYLE_OPTIONS = [
+  { label: 'Relaxed', icon: Feather, text: 'Relaxed' },
+  { label: 'Adventurous', icon: Zap, text: 'Adventurous' },
+  { label: 'Cultural', icon: Landmark, text: 'Cultural' },
+  { label: 'Party', icon: PartyPopper, text: 'Party' },
+]
+
+const TRAVELER_OPTIONS = [1, 2, 4, 6].map((count) => ({
+  label: `${count}${count === 6 ? '+' : ''} traveler${count === 1 ? '' : 's'}`,
+  icon: Users,
+  text: `${count}${count === 6 ? '+' : ''} traveler${count === 1 ? '' : 's'}`,
+}))
+
+const BUDGET_OPTIONS = [15_000, 25_000, 50_000, 100_000].map((amount) => ({
+  label: `₹${amount.toLocaleString('en-IN')}${amount === 100_000 ? '+' : ''}`,
+  icon: IndianRupee,
+  text: `Budget around ₹${amount.toLocaleString('en-IN')}`,
+}))
+
+// Contextual quick-answer chips — shown for whichever of these three fields
+// Gemini hasn't extracted yet, so answering a fixed-choice question doesn't
+// require typing it out. Clicking still sends a real message through the
+// same chat (handleSend), never bypassing Gemini.
+const STYLE_OPTIONS = [
+  { label: 'Relaxed', icon: Feather },
+  { label: 'Adventurous', icon: Zap },
+  { label: 'Cultural', icon: Landmark },
+  { label: 'Party', icon: PartyPopper },
+]
+
+const TRAVELER_OPTIONS = [1, 2, 4, 6]
+const BUDGET_OPTIONS = [15_000, 25_000, 50_000, 100_000]
 
 export function AiTripChat() {
   const navigate = useNavigate()
@@ -212,6 +264,47 @@ export function AiTripChat() {
                       onClick={() => handleSend(suggestion.text)}
                     />
                   ))}
+                </div>
+              )}
+
+              {!thinking && messages.length > 1 && !plan && (
+                <div className="ml-10 flex flex-col gap-3">
+                  {!slots.travelStyle && (
+                    <div className="flex flex-wrap gap-2">
+                      {STYLE_OPTIONS.map((style) => (
+                        <QuickReplyChip
+                          key={style.label}
+                          label={style.label}
+                          icon={style.icon}
+                          onClick={() => handleSend(style.label)}
+                        />
+                      ))}
+                    </div>
+                  )}
+                  {!slots.travelers && (
+                    <div className="flex flex-wrap gap-2">
+                      {TRAVELER_OPTIONS.map((count) => (
+                        <QuickReplyChip
+                          key={count}
+                          label={`${count}${count === 6 ? '+' : ''} traveler${count === 1 ? '' : 's'}`}
+                          icon={Users}
+                          onClick={() => handleSend(`${count} travelers`)}
+                        />
+                      ))}
+                    </div>
+                  )}
+                  {!slots.budget && (
+                    <div className="flex flex-wrap gap-2">
+                      {BUDGET_OPTIONS.map((amount) => (
+                        <QuickReplyChip
+                          key={amount}
+                          label={`₹${amount.toLocaleString('en-IN')}${amount === 100_000 ? '+' : ''}`}
+                          icon={IndianRupee}
+                          onClick={() => handleSend(`My budget is ₹${amount.toLocaleString('en-IN')}`)}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 

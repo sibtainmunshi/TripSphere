@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Bot,
   Building2,
   Compass,
   Feather,
@@ -16,6 +15,7 @@ import {
   Waves,
   Zap,
 } from 'lucide-react'
+import logo from '@/assets/logo.svg'
 import { Avatar } from '@/components/Avatar'
 import { useAuthStore } from '@/store/authStore'
 import { useTripStore } from '@/store/tripStore'
@@ -69,7 +69,7 @@ export function AiTripChat() {
     {
       id: 'greeting',
       from: 'ai',
-      text: `Hi ${name}! 👋\nI'm your AI travel assistant. I'll help you plan the perfect trip. Let's start with the destination.`,
+      text: `Hi ${name}! 👋\nI'm the TripSphere AI planner. I'll help you plan the perfect trip. Let's start with the destination.`,
     },
     { id: 'ask-vibe', from: 'ai', text: 'Where would you like to go?' },
   ])
@@ -285,9 +285,7 @@ export function AiTripChat() {
               {messages.map((message) => (
                 <div key={message.id} className="flex items-start gap-2.5">
                   {message.from === 'ai' && (
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-navy">
-                      <Bot className="h-4 w-4 text-white" />
-                    </div>
+                    <img src={logo} alt="TripSphere" className="h-8 w-8 shrink-0 rounded-full" />
                   )}
                   <div className={message.from === 'user' ? 'ml-auto' : ''}>
                     <ChatBubble from={message.from}>
@@ -346,9 +344,7 @@ export function AiTripChat() {
 
               {thinking && (
                 <div className="flex items-start gap-2.5">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-navy">
-                    <Bot className="h-4 w-4 text-white" />
-                  </div>
+                  <img src={logo} alt="TripSphere" className="h-8 w-8 shrink-0 rounded-full" />
                   <TypingIndicator />
                 </div>
               )}

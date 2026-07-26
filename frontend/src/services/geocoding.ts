@@ -16,8 +16,6 @@ export interface PlaceResult {
   fullAddress: string
   lat: number
   lon: number
-  /** True for an actual city/town/village/region/country; false for a business/POI match (e.g. a shop that happens to share the query text). */
-  isRealPlace: boolean
 }
 
 interface NominatimAddress {
@@ -49,10 +47,9 @@ interface NominatimItem {
 // destination is always a sensible town/city/region, never a business name.
 function buildShortLabel(item: NominatimItem): string {
   const addr = item.address ?? {}
-  const isRealPlace = item.category === 'place' || (item.category === 'boundary' && item.type === 'administrative')
   const fallbackName = item.name ?? item.display_name.split(',')[0].trim()
 
-  if (isRealPlace) {
+  if (isRealPlaceItem(item)) {
     const region = addr.state && addr.state !== fallbackName ? addr.state : addr.country
     return region ? `${fallbackName}, ${region}` : fallbackName
   }
@@ -63,8 +60,36 @@ function buildShortLabel(item: NominatimItem): string {
   return region ? `${place}, ${region}` : place
 }
 
+// Boundary/leisure/tourism types that are genuine, visitable destinations —
+// not every value under these categories qualifies (e.g. tourism=information
+// is just a signage node, not a place to travel to).
+const REAL_PLACE_BOUNDARY_TYPES = new Set(['administrative', 'national_park', 'protected_area'])
+const REAL_PLACE_LEISURE_TYPES = new Set(['nature_reserve', 'park'])
+const REAL_PLACE_TOURISM_TYPES = new Set(['attraction', 'zoo', 'theme_park'])
+
+// A real, visitable trip destination — cities/towns/regions, and genuine
+// places beyond that: national parks, nature reserves, natural features
+// (valleys, beaches, mountains), historic sites and named attractions.
+// Everything else (a shop, an office, a random business) is deliberately
+// NOT recognized here, even if its name or address happens to match the
+// query text — e.g. a florist whose address contains "Valley" shouldn't
+// out-rank the actual "Valley of Flowers National Park" just because
+// Nominatim's fuzzy text match scored it higher.
 function isRealPlaceItem(item: NominatimItem): boolean {
-  return item.category === 'place' || (item.category === 'boundary' && item.type === 'administrative')
+  switch (item.category) {
+    case 'place':
+    case 'natural':
+    case 'historic':
+      return true
+    case 'boundary':
+      return REAL_PLACE_BOUNDARY_TYPES.has(item.type ?? '')
+    case 'leisure':
+      return REAL_PLACE_LEISURE_TYPES.has(item.type ?? '')
+    case 'tourism':
+      return REAL_PLACE_TOURISM_TYPES.has(item.type ?? '')
+    default:
+      return false
+  }
 }
 
 export async function searchPlaces(query: string, signal?: AbortSignal): Promise<PlaceResult[]> {
@@ -77,13 +102,14 @@ export async function searchPlaces(query: string, signal?: AbortSignal): Promise
 
   const data: NominatimItem[] = await response.json()
 
-  // Real places (cities/towns/regions) first, POI/business matches after —
-  // preserves Nominatim's own relevance order within each group.
-  const sorted = [...data].sort((a, b) => Number(isRealPlaceItem(b)) - Number(isRealPlaceItem(a)))
+  // Only genuine, visitable places make it into results at all — a
+  // business/POI match is dropped entirely rather than just ranked lower,
+  // so it can never be the only (wrong) option shown for an obscure query.
+  const realPlaces = data.filter(isRealPlaceItem)
 
   const seenLabels = new Set<string>()
   const results: PlaceResult[] = []
-  for (const item of sorted) {
+  for (const item of realPlaces) {
     const label = buildShortLabel(item)
     const key = label.toLowerCase()
     if (seenLabels.has(key)) continue
@@ -94,7 +120,6 @@ export async function searchPlaces(query: string, signal?: AbortSignal): Promise
       fullAddress: item.display_name,
       lat: Number(item.lat),
       lon: Number(item.lon),
-      isRealPlace: isRealPlaceItem(item),
     })
     if (results.length >= 6) break
   }

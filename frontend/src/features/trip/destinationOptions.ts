@@ -59,12 +59,10 @@ export async function enrichWithRealData(option: DestinationOption): Promise<Des
 
   if (lat == null || lon == null) {
     try {
-      const results = await searchPlaces(option.name)
-      // Nominatim happily matches business/POI names too (e.g. a shop
-      // literally called "Hey There Sunshine") — only a genuine place
-      // (city/town/village/region/country) counts as confirming this is a
-      // real destination, never a business that happens to share the text.
-      const match = results.find((result) => result.isRealPlace)
+      // searchPlaces() only ever returns genuine places (cities, parks,
+      // natural features, etc.) — a business/POI match, even one that
+      // happens to share the query text, never comes back from it at all.
+      const [match] = await searchPlaces(option.name)
       if (match) {
         lat = match.lat
         lon = match.lon

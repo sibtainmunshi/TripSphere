@@ -25,7 +25,7 @@ export function AppLayout() {
   if (!isAuthenticated) return <Navigate to="/login" replace />
 
   return (
-    <div className="flex min-h-screen bg-white text-ink">
+    <div className="flex h-screen overflow-hidden bg-white text-ink">
       {insideTripWorkspace ? <TripSidebar /> : <Sidebar />}
       <main className="flex-1 overflow-y-auto">
         <Outlet />

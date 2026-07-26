@@ -32,13 +32,19 @@ class TripSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         rep = super().to_representation(instance)
         # Report whichever is larger: the stated headcount hint, or the
-        # actually-named members — never under-report either path.
-        rep['memberCount'] = max(instance.member_count, 1 + instance.members.count())
+        # actually-named members (which now always includes the owner's own
+        # row — see Trip.get_or_create_owner_member) — never under-report
+        # either path.
+        rep['memberCount'] = max(instance.member_count, instance.members.count())
         return rep
 
     def create(self, validated_data):
         members_data = validated_data.pop('members', [])
         trip = Trip.objects.create(owner=self.context['request'].user, **validated_data)
+        # Every trip member — including the owner — is a real TripMember row,
+        # so budget/expense features can attribute things to anyone in the
+        # trip uniformly rather than treating the owner as a special case.
+        trip.get_or_create_owner_member()
         for member_data in members_data:
             TripMember.objects.create(trip=trip, **member_data)
         return trip

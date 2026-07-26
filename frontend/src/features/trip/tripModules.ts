@@ -34,14 +34,7 @@ export const TRIP_MODULES: TripModule[] = [
     description: "A day-by-day plan for the trip — what you're doing, when, and where.",
     milestone: 'Milestone 4',
   },
-  {
-    path: 'expenses',
-    label: 'Expenses',
-    icon: Wallet,
-    end: false,
-    description: 'Total budget, category spending, expenses, and settling up with the group.',
-    milestone: 'Milestone 5',
-  },
+  { path: 'expenses', label: 'Expenses', icon: Wallet, end: false },
   { path: 'bookings', label: 'Bookings', icon: MapPinned, end: false },
   {
     path: 'checklists',
@@ -73,4 +66,4 @@ export const TRIP_MODULES: TripModule[] = [
 
 // Modules with real, working pages — everything else in TRIP_MODULES falls
 // back to an honest ModulePlaceholder in the route table.
-export const REAL_MODULE_PATHS = new Set(['bookings', 'documents', 'settings'])
+export const REAL_MODULE_PATHS = new Set(['bookings', 'documents', 'settings', 'expenses'])

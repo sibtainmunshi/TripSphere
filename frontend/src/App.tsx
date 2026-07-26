@@ -23,6 +23,7 @@ import { ModulePlaceholder } from '@/features/trip/ModulePlaceholder'
 import { REAL_MODULE_PATHS, TRIP_MODULES } from '@/features/trip/tripModules'
 import { Bookings } from '@/features/trip/travelHub/Bookings'
 import { TravelDocumentsPage } from '@/features/trip/travelHub/TravelDocumentsPage'
+import { ExpensesPage } from '@/features/trip/budgetPlanner/ExpensesPage'
 
 function AppShell() {
   const [showSplash, setShowSplash] = useState(true)
@@ -57,6 +58,7 @@ function AppShell() {
           <Route path="trips/new/manual" element={<PlanTripManual />} />
           <Route path="trips/:tripId" element={<TripWorkspace />}>
             <Route index element={<TripOverview />} />
+            <Route path="expenses" element={<ExpensesPage />} />
             <Route path="bookings" element={<Bookings />} />
             <Route path="documents" element={<TravelDocumentsPage />} />
             <Route path="settings" element={<TripSettings />} />

@@ -8,6 +8,7 @@ urlpatterns = [
     path('auth/', include('authentication.urls')),
     path('', include('workspace.urls')),
     path('', include('travel.urls')),
+    path('', include('budget.urls')),
     path('attractions/', NearbyAttractionsView.as_view(), name='nearby-attractions'),
     path('chat-planner/', ChatPlannerView.as_view(), name='chat-planner'),
 ]

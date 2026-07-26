@@ -15,7 +15,9 @@ import { useTripStore } from '@/store/tripStore'
 import { useWeather } from '@/hooks/useWeather'
 import { getWeatherIcon } from '@/services/weather'
 import { listDocuments } from '@/services/travelApi'
+import { getBudget, listExpenses } from '@/services/budgetApi'
 import type { TravelDocument } from '@/types/travel'
+import type { Budget, Expense } from '@/types/budget'
 import { useBookingEvents, formatEventTime } from './travelHub/useBookingEvents'
 
 export function TripOverview() {
@@ -24,19 +26,26 @@ export function TripOverview() {
   const { data: weather } = useWeather(trip?.lat, trip?.lon)
   const events = useBookingEvents(tripId ?? '')
   const [documents, setDocuments] = useState<TravelDocument[] | null>(null)
+  const [budget, setBudget] = useState<Budget | null>(null)
+  const [expenses, setExpenses] = useState<Expense[]>([])
 
   useEffect(() => {
     if (!tripId) return
     listDocuments(tripId)
       .then(setDocuments)
       .catch(() => setDocuments([]))
+    getBudget(tripId).then(setBudget)
+    listExpenses(tripId)
+      .then(setExpenses)
+      .catch(() => setExpenses([]))
   }, [tripId])
 
   if (!trip || !tripId) return null
 
   const hasBookings = events !== null && events.length > 0
   const hasDocuments = (documents?.length ?? 0) > 0
-  const hasBudget = Boolean(trip.budget)
+  const hasBudget = Boolean(budget) || Boolean(trip.budget)
+  const totalSpent = expenses.reduce((sum, expense) => sum + Number(expense.amount), 0)
 
   const checkpoints = [
     { label: 'Trip Details', done: true },
@@ -135,18 +144,30 @@ export function TripOverview() {
               <Wallet className="h-4 w-4 text-ocean" />
               Budget
             </p>
+            <Link to={`/trips/${tripId}/expenses`} className="text-xs font-medium text-ocean hover:underline">
+              View all →
+            </Link>
           </div>
-          {trip.budget ? (
-            <p className="flex items-center gap-1 text-lg font-bold text-ink">
-              <IndianRupee className="h-4 w-4" />
-              {trip.budget.toLocaleString('en-IN')} planned
-            </p>
+          {budget ? (
+            <>
+              <p className="flex items-center gap-1 text-lg font-bold text-ink">
+                <IndianRupee className="h-4 w-4" />
+                {totalSpent.toLocaleString('en-IN')}
+                <span className="text-sm font-normal text-slate"> / {Number(budget.totalBudget).toLocaleString('en-IN')}</span>
+              </p>
+              <p className="mt-1 text-xs text-slate">{expenses.length} expense{expenses.length === 1 ? '' : 's'} logged</p>
+            </>
+          ) : trip.budget ? (
+            <>
+              <p className="flex items-center gap-1 text-lg font-bold text-ink">
+                <IndianRupee className="h-4 w-4" />
+                {trip.budget.toLocaleString('en-IN')} planned
+              </p>
+              <p className="mt-1 text-xs text-slate">Set a detailed budget to track spending by category.</p>
+            </>
           ) : (
             <p className="text-sm text-slate">No budget set yet.</p>
           )}
-          <p className="mt-1 text-xs text-slate">
-            Expense tracking isn&rsquo;t built yet — this is your planned total only.
-          </p>
         </div>
 
         <div className="rounded-2xl border border-mist p-5">

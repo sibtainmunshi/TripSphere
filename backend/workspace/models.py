@@ -32,6 +32,18 @@ class Trip(models.Model):
     def __str__(self):
         return self.name
 
+    def get_or_create_owner_member(self):
+        """Expenses/settlements attribute every trip member — including the
+        owner — to a real TripMember row. The owner never gets one created
+        automatically today (TripSerializer.create() only makes rows for
+        invited members), so this lazily creates it on first use — covers
+        trips created before this existed too, no data migration needed."""
+        member, _ = self.members.get_or_create(
+            email=self.owner.email,
+            defaults={'name': self.owner.name or self.owner.email, 'status': 'owner'},
+        )
+        return member
+
 
 class TripMember(models.Model):
     STATUS_CHOICES = (

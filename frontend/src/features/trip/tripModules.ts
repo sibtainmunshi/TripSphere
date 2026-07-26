@@ -5,6 +5,7 @@ import {
   LayoutGrid,
   ListChecks,
   MapPinned,
+  MessageCircle,
   Settings as SettingsIcon,
   StickyNote,
   Wallet,
@@ -35,6 +36,7 @@ export const TRIP_MODULES: TripModule[] = [
     milestone: 'Milestone 4',
   },
   { path: 'expenses', label: 'Expenses', icon: Wallet, end: false },
+  { path: 'chat', label: 'Chat', icon: MessageCircle, end: false },
   { path: 'bookings', label: 'Bookings', icon: MapPinned, end: false },
   {
     path: 'checklists',
@@ -66,4 +68,4 @@ export const TRIP_MODULES: TripModule[] = [
 
 // Modules with real, working pages — everything else in TRIP_MODULES falls
 // back to an honest ModulePlaceholder in the route table.
-export const REAL_MODULE_PATHS = new Set(['bookings', 'documents', 'settings', 'expenses'])
+export const REAL_MODULE_PATHS = new Set(['bookings', 'documents', 'settings', 'expenses', 'chat'])

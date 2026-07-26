@@ -24,6 +24,7 @@ import { REAL_MODULE_PATHS, TRIP_MODULES } from '@/features/trip/tripModules'
 import { Bookings } from '@/features/trip/travelHub/Bookings'
 import { TravelDocumentsPage } from '@/features/trip/travelHub/TravelDocumentsPage'
 import { ExpensesPage } from '@/features/trip/budgetPlanner/ExpensesPage'
+import { ChatPage } from '@/features/trip/ChatPage'
 import { JoinTrip } from '@/pages/JoinTrip'
 
 function AppShell() {
@@ -60,6 +61,7 @@ function AppShell() {
           <Route path="trips/:tripId" element={<TripWorkspace />}>
             <Route index element={<TripOverview />} />
             <Route path="expenses" element={<ExpensesPage />} />
+            <Route path="chat" element={<ChatPage />} />
             <Route path="bookings" element={<Bookings />} />
             <Route path="documents" element={<TravelDocumentsPage />} />
             <Route path="settings" element={<TripSettings />} />

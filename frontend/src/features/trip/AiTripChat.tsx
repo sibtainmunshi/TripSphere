@@ -66,24 +66,65 @@ const STYLE_OPTIONS = [
 const TRAVELER_OPTIONS = [1, 2, 4, 6]
 const BUDGET_OPTIONS = [15_000, 25_000, 50_000, 100_000]
 
+// Keeps an in-progress conversation alive across a refresh or a re-login —
+// without this it only ever lived in React state, so reloading the page
+// silently threw away everything Gemini had already learned about the trip.
+// Scoped per user so a shared/public browser doesn't leak one account's
+// planning chat into another's.
+const STORAGE_KEY_PREFIX = 'tripsphere:ai-planner:'
+
+interface PersistedPlannerState {
+  messages: Message[]
+  slots: PlannerSlots
+  plan: TripPlanData | null
+  enrichedDestination: DestinationOption | null
+}
+
+function loadPersistedState(userId: string | undefined): PersistedPlannerState | null {
+  if (!userId) return null
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_PREFIX + userId)
+    return raw ? (JSON.parse(raw) as PersistedPlannerState) : null
+  } catch {
+    return null
+  }
+}
+
 export function AiTripChat() {
   const navigate = useNavigate()
   const user = useAuthStore((state) => state.user)
   const createTrip = useTripStore((state) => state.createTrip)
   const name = user?.name ?? 'there'
 
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 'greeting',
-      from: 'ai',
-      text: `Hi ${name}! 👋\nI'm the TripSphere AI planner. Tell me about the trip you're dreaming of — where, with how many people, what kind of vibe, and roughly what budget.`,
-    },
-  ])
+  const [persisted] = useState(() => loadPersistedState(user?.id))
+
+  const [messages, setMessages] = useState<Message[]>(
+    persisted?.messages ?? [
+      {
+        id: 'greeting',
+        from: 'ai',
+        text: `Hi ${name}! 👋\nI'm the TripSphere AI planner. Tell me about the trip you're dreaming of — where, with how many people, what kind of vibe, and roughly what budget.`,
+      },
+    ],
+  )
   const [thinking, setThinking] = useState(false)
   const [input, setInput] = useState('')
-  const [slots, setSlots] = useState<PlannerSlots>(EMPTY_SLOTS)
-  const [plan, setPlan] = useState<TripPlanData | null>(null)
-  const [enrichedDestination, setEnrichedDestination] = useState<DestinationOption | null>(null)
+  const [slots, setSlots] = useState<PlannerSlots>(persisted?.slots ?? EMPTY_SLOTS)
+  const [plan, setPlan] = useState<TripPlanData | null>(persisted?.plan ?? null)
+  const [enrichedDestination, setEnrichedDestination] = useState<DestinationOption | null>(
+    persisted?.enrichedDestination ?? null,
+  )
+
+  useEffect(() => {
+    if (!user?.id) return
+    try {
+      const toSave: PersistedPlannerState = { messages, slots, plan, enrichedDestination }
+      localStorage.setItem(STORAGE_KEY_PREFIX + user.id, JSON.stringify(toSave))
+    } catch {
+      // Private browsing / storage full — losing persistence silently is
+      // fine, it just means this session behaves like it used to.
+    }
+  }, [messages, slots, plan, enrichedDestination, user?.id])
 
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -173,6 +214,10 @@ export function AiTripChat() {
         lat: plan.lat,
         lon: plan.lon,
       })
+      // The trip this conversation was building now exists for real —
+      // clear it so the next visit to the planner starts a fresh chat
+      // instead of resuming one that's already been turned into a trip.
+      if (user?.id) localStorage.removeItem(STORAGE_KEY_PREFIX + user.id)
       navigate(`/trips/${trip.id}`)
     } catch {
       setCreateError('Could not create your trip. Please try again.')

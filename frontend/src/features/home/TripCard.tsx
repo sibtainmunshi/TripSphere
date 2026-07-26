@@ -4,10 +4,10 @@ import { Calendar, IndianRupee, MoreHorizontal, Archive, ArchiveRestore, Trash2 
 import type { Trip } from '@/types'
 import { useAuthStore } from '@/store/authStore'
 import { useTripStore } from '@/store/tripStore'
-import { getDestinationImage } from '@/features/trip/destinationImagery'
 import { Avatar } from '@/components/Avatar'
 import { getTripStatus, STATUS_LABEL, STATUS_BADGE_CLASS, formatDateRange } from '@/utils/tripStatus'
 import { useWeather } from '@/hooks/useWeather'
+import { useDestinationImage } from '@/hooks/useDestinationImage'
 import { getWeatherIcon } from '@/services/weather'
 
 const FALLBACK_GRADIENTS = ['from-ocean to-navy', 'from-sea to-forest', 'from-gold to-gold-dark', 'from-lavender to-lavender-dark']
@@ -29,7 +29,7 @@ export function TripCard({ trip }: TripCardProps) {
   const [menuOpen, setMenuOpen] = useState(false)
 
   const status = getTripStatus(trip)
-  const image = getDestinationImage(trip.destination)
+  const image = useDestinationImage(trip.destination)
   const { data: weather } = useWeather(trip.lat, trip.lon)
   const WeatherIcon = weather ? getWeatherIcon(weather.code) : null
   const owner = { id: 'owner', name: currentUser?.name ?? 'You', imageUrl: currentUser?.avatarUrl }

@@ -25,7 +25,12 @@ import { QuickReplyChip } from './QuickReplyChip'
 import { StepIndicator } from './StepIndicator'
 import { TripPlanPreview } from './TripPlanPreview'
 import { TripPlanPlaceholder } from './TripPlanPlaceholder'
-import { getDestinationForCustomName, getDestinationForVibe, type DestinationOption } from './destinationOptions'
+import {
+  enrichWithRealData,
+  getDestinationForCustomName,
+  getDestinationForVibe,
+  type DestinationOption,
+} from './destinationOptions'
 import { generateTripPlan, type TripPlanData } from './tripPlanMock'
 
 interface Message {
@@ -98,8 +103,17 @@ export function AiTripChat() {
   }
 
   const handleDestination = (chosen: DestinationOption, label: string) => {
-    setDestination(chosen)
-    advance(label, `Great pick! ${chosen.name} it is. 🎉\nWhat kind of trip are you after?`, 2)
+    pushMessage('user', label)
+    setThinking(true)
+    // Real coordinates/photo lookup (Wikipedia) for whatever this option is
+    // still missing — genuinely fetched, not a fixed setTimeout, since this
+    // step now does real work rather than just simulating "thinking".
+    enrichWithRealData(chosen).then((enriched) => {
+      setDestination(enriched)
+      setThinking(false)
+      pushMessage('ai', `Great pick! ${enriched.name} it is. 🎉\nWhat kind of trip are you after?`)
+      setStep(2)
+    })
   }
 
   const handleStyle = (style: string) => {

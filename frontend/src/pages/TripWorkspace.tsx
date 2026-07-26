@@ -3,9 +3,9 @@ import { Outlet, useNavigate, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Calendar, CloudSun, Users } from 'lucide-react'
 import { useTripStore } from '@/store/tripStore'
-import { getDestinationImage } from '@/features/trip/destinationImagery'
 import { getTripStatus, STATUS_LABEL } from '@/utils/tripStatus'
 import { useWeather } from '@/hooks/useWeather'
+import { useDestinationImage } from '@/hooks/useDestinationImage'
 import { getWeatherIcon } from '@/services/weather'
 
 export function TripWorkspace() {
@@ -14,6 +14,7 @@ export function TripWorkspace() {
   const trip = useTripStore((state) => (tripId ? state.getTripById(tripId) : state.currentTrip))
   const hasLoadedTrips = useTripStore((state) => state.hasLoaded)
   const { data: weather } = useWeather(trip?.lat, trip?.lon)
+  const heroImage = useDestinationImage(trip?.destination ?? '')
 
   useEffect(() => {
     // Don't bounce home just because the trip isn't in the store yet — on a
@@ -24,8 +25,6 @@ export function TripWorkspace() {
   }, [trip, hasLoadedTrips, navigate])
 
   if (!trip) return null
-
-  const heroImage = getDestinationImage(trip.destination)
   const WeatherIcon = weather ? getWeatherIcon(weather.code) : CloudSun
 
   return (

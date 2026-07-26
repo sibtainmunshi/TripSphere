@@ -1,6 +1,7 @@
 import destMountains from '@/assets/dest-mountains.jpg'
 import destLakes from '@/assets/dest-lakes.jpg'
 import { getDestinationImage } from './destinationImagery'
+import { fetchDestinationSummary } from '@/services/wikipedia'
 
 export interface DestinationOption {
   name: string
@@ -82,9 +83,10 @@ export function getDestinationForVibe(vibe: string): DestinationOption {
   return VIBE_DESTINATIONS[vibe] ?? VIBE_DESTINATIONS.Anywhere
 }
 
-// No coordinates here — this is a free-typed name, not a geocoded result, so
-// there's no real lat/lon to attach. Weather simply won't show for these
-// trips rather than guessing a location, same honesty rule as the image.
+// No coordinates here yet — this is a free-typed name, not a geocoded
+// result. enrichWithRealData() (below) fills in a real photo + real lat/lon
+// via Wikipedia right after this is created, so weather/attractions still
+// work for custom destinations instead of only the 4 preset vibes.
 export function getDestinationForCustomName(rawName: string): DestinationOption {
   const trimmed = rawName.trim()
   const image = getDestinationImage(trimmed)
@@ -96,5 +98,27 @@ export function getDestinationForCustomName(rawName: string): DestinationOption 
     gradient: 'from-ocean to-navy',
     bestTime: 'Year-round',
     description: `A trip built around ${trimmed} — customise every detail in the next step.`,
+  }
+}
+
+// Fills in whatever real data is still missing (photo and/or coordinates)
+// via Wikipedia — used for both custom-typed destinations (which start with
+// neither) and preset vibes that don't have hand-picked local photography
+// (Goa/Dubai). Never overwrites real data that's already there, and never
+// fabricates a substitute if Wikipedia has nothing — the card just keeps
+// its honest gradient/no-weather fallback exactly as it did before.
+export async function enrichWithRealData(option: DestinationOption): Promise<DestinationOption> {
+  if (option.image && option.lat != null && option.lon != null) return option
+
+  try {
+    const summary = await fetchDestinationSummary(option.name)
+    return {
+      ...option,
+      image: option.image ?? summary.image,
+      lat: option.lat ?? summary.lat,
+      lon: option.lon ?? summary.lon,
+    }
+  } catch {
+    return option
   }
 }

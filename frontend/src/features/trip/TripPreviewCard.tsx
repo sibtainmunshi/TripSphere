@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Calendar, Camera, Clock, Compass, Sparkles, Users, Wallet } from 'lucide-react'
-import { getDestinationImage } from './destinationImagery'
+import { useDestinationImage } from '@/hooks/useDestinationImage'
 
 interface TripPreviewCardProps {
   name: string
@@ -38,7 +38,7 @@ export function TripPreviewCard({
   budget,
 }: TripPreviewCardProps) {
   const [showComingSoon, setShowComingSoon] = useState(false)
-  const image = destination ? getDestinationImage(destination) : null
+  const image = useDestinationImage(destination)
   const start = formatDate(startDate)
   const end = formatDate(endDate)
   const duration = durationLabel(startDate, endDate)

@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom'
 import { Calendar, IndianRupee, Users } from 'lucide-react'
 import type { Trip } from '@/types'
-import { getDestinationImage } from '@/features/trip/destinationImagery'
 import { formatDateRange, getTripStatus, STATUS_LABEL } from '@/utils/tripStatus'
 import { useWeather } from '@/hooks/useWeather'
+import { useDestinationImage } from '@/hooks/useDestinationImage'
 import { getWeatherIcon } from '@/services/weather'
 
 function pickContinueTrip(trips: Trip[]): Trip | null {
@@ -20,13 +20,13 @@ interface ContinuePlanningCardProps {
 
 export function ContinuePlanningCard({ trips }: ContinuePlanningCardProps) {
   const trip = pickContinueTrip(trips)
-  // useWeather must run unconditionally (rules of hooks) — trip may be null
-  // depending on what's in `trips`, so it's called before the early return.
+  // Hooks must run unconditionally (rules of hooks) — trip may be null
+  // depending on what's in `trips`, so they're called before the early return.
   const { data: weather } = useWeather(trip?.lat, trip?.lon)
+  const image = useDestinationImage(trip?.destination ?? '')
   if (!trip) return null
 
   const WeatherIcon = weather ? getWeatherIcon(weather.code) : null
-  const image = getDestinationImage(trip.destination)
   const memberCount = (trip.members?.length ?? 0) + 1
 
   return (

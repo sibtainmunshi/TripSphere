@@ -15,6 +15,7 @@ import {
 import type { TripPlanData } from './tripPlanMock'
 import { useWeather } from '@/hooks/useWeather'
 import { getWeatherIcon } from '@/services/weather'
+import { NearbyAttractions } from './NearbyAttractions'
 
 interface TripPlanPreviewProps {
   plan: TripPlanData
@@ -157,6 +158,8 @@ export function TripPlanPreview({ plan, onRegenerate, onContinue, creating, crea
           </div>
         ))}
       </div>
+
+      <NearbyAttractions lat={plan.lat} lon={plan.lon} />
 
       <div className="mt-6 flex items-start gap-2.5 rounded-xl bg-ocean/5 p-3.5">
         <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-ocean" />

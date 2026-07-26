@@ -274,57 +274,72 @@ export function AiTripChat() {
               ))}
 
               {!thinking && messages.length === 1 && !plan && (
-                <div className="ml-10 flex flex-wrap gap-2">
-                  {STARTER_SUGGESTIONS.map((suggestion) => (
-                    <QuickReplyChip
-                      key={suggestion.label}
-                      label={suggestion.label}
-                      icon={suggestion.icon}
-                      onClick={() => handleSend(suggestion.text)}
-                    />
-                  ))}
+                <div className="ml-10 flex flex-col gap-1.5">
+                  <p className="text-xs text-slate">Pick one, or describe your trip yourself:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {STARTER_SUGGESTIONS.map((suggestion) => (
+                      <QuickReplyChip
+                        key={suggestion.label}
+                        label={suggestion.label}
+                        icon={suggestion.icon}
+                        onClick={() => handleSend(suggestion.text)}
+                      />
+                    ))}
+                  </div>
                 </div>
               )}
 
+              {/* Only whichever field Gemini still needs next gets shown — never all
+                  three at once, so it reads as one question at a time like the chat
+                  itself, not a form dump. */}
               {!thinking && messages.length > 1 && !plan && (
-                <div className="ml-10 flex flex-col gap-3">
+                <>
                   {!slots.travelStyle && (
-                    <div className="flex flex-wrap gap-2">
-                      {STYLE_OPTIONS.map((style) => (
-                        <QuickReplyChip
-                          key={style.label}
-                          label={style.label}
-                          icon={style.icon}
-                          onClick={() => handleSend(style.label)}
-                        />
-                      ))}
+                    <div className="ml-10 flex flex-col gap-1.5">
+                      <p className="text-xs text-slate">Pick one, or describe it yourself:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {STYLE_OPTIONS.map((style) => (
+                          <QuickReplyChip
+                            key={style.label}
+                            label={style.label}
+                            icon={style.icon}
+                            onClick={() => handleSend(style.label)}
+                          />
+                        ))}
+                      </div>
                     </div>
                   )}
-                  {!slots.travelers && (
-                    <div className="flex flex-wrap gap-2">
-                      {TRAVELER_OPTIONS.map((count) => (
-                        <QuickReplyChip
-                          key={count}
-                          label={`${count}${count === 6 ? '+' : ''} traveler${count === 1 ? '' : 's'}`}
-                          icon={Users}
-                          onClick={() => handleSend(`${count} travelers`)}
-                        />
-                      ))}
+                  {slots.travelStyle && !slots.travelers && (
+                    <div className="ml-10 flex flex-col gap-1.5">
+                      <p className="text-xs text-slate">Pick one, or describe it yourself:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {TRAVELER_OPTIONS.map((count) => (
+                          <QuickReplyChip
+                            key={count}
+                            label={`${count}${count === 6 ? '+' : ''} traveler${count === 1 ? '' : 's'}`}
+                            icon={Users}
+                            onClick={() => handleSend(`${count} travelers`)}
+                          />
+                        ))}
+                      </div>
                     </div>
                   )}
-                  {!slots.budget && (
-                    <div className="flex flex-wrap gap-2">
-                      {BUDGET_OPTIONS.map((amount) => (
-                        <QuickReplyChip
-                          key={amount}
-                          label={`₹${amount.toLocaleString('en-IN')}${amount === 100_000 ? '+' : ''}`}
-                          icon={IndianRupee}
-                          onClick={() => handleSend(`My budget is ₹${amount.toLocaleString('en-IN')}`)}
-                        />
-                      ))}
+                  {slots.travelStyle && slots.travelers && !slots.budget && (
+                    <div className="ml-10 flex flex-col gap-1.5">
+                      <p className="text-xs text-slate">Pick one, or describe it yourself:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {BUDGET_OPTIONS.map((amount) => (
+                          <QuickReplyChip
+                            key={amount}
+                            label={`₹${amount.toLocaleString('en-IN')}${amount === 100_000 ? '+' : ''}`}
+                            icon={IndianRupee}
+                            onClick={() => handleSend(`My budget is ₹${amount.toLocaleString('en-IN')}`)}
+                          />
+                        ))}
+                      </div>
                     </div>
                   )}
-                </div>
+                </>
               )}
 
               {thinking && (

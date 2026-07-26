@@ -176,11 +176,11 @@ function relativeTime(timestamp: number): string {
 // which sometimes trips the very first request after a gap — one silent
 // retry clears most of these instead of surfacing a "connection" error for
 // something that would have worked a few seconds later.
-async function sendPlannerMessageWithRetry(history: ChatMessage[]): Promise<ChatPlannerResult> {
+async function sendPlannerMessageWithRetry(history: ChatMessage[], slots: PlannerSlots): Promise<ChatPlannerResult> {
   try {
-    return await sendPlannerMessage(history)
+    return await sendPlannerMessage(history, slots)
   } catch {
-    return await sendPlannerMessage(history)
+    return await sendPlannerMessage(history, slots)
   }
 }
 
@@ -279,7 +279,7 @@ export function AiTripChat() {
     const history: ChatMessage[] = nextMessages.map((m) => ({ role: m.from === 'user' ? 'user' : 'model', text: m.text }))
 
     try {
-      const result = await sendPlannerMessageWithRetry(history)
+      const result = await sendPlannerMessageWithRetry(history, slots)
       pushMessage('ai', result.reply)
       setThinking(false)
       setNextField(result.nextField)

@@ -14,6 +14,13 @@ export interface ChatMessage {
 
 export type PlannerField = 'destination' | 'travelStyle' | 'travelers' | 'budget'
 
+export interface PlannerSlots {
+  destination: string | null
+  travelStyle: string | null
+  travelers: number | null
+  budget: number | null
+}
+
 export interface ChatPlannerResult {
   reply: string
   destination: string | null
@@ -28,7 +35,12 @@ export interface ChatPlannerResult {
   nextField: PlannerField | null
 }
 
-export async function sendPlannerMessage(messages: ChatMessage[]): Promise<ChatPlannerResult> {
-  const { data } = await api.post<ChatPlannerResult>('/chat-planner/', { messages })
+// Stateless — the frontend also sends its own tracked `slots` alongside the
+// message history every turn, as ground truth for what's already confirmed.
+// Without it, Gemini's only way to know what's settled is re-reading its own
+// past reply text, which broke down on ambiguous turns (e.g. the user just
+// replying "yes") and produced a nextField that contradicted its own reply.
+export async function sendPlannerMessage(messages: ChatMessage[], slots: PlannerSlots): Promise<ChatPlannerResult> {
+  const { data } = await api.post<ChatPlannerResult>('/chat-planner/', { messages, slots })
   return data
 }

@@ -64,7 +64,12 @@ RESPONSE_SCHEMA = {
             'enum': ['destination', 'travelStyle', 'travelers', 'budget'],
         },
     },
-    'required': ['reply', 'readyToPlan'],
+    # Every field required (nullable ones can still be null) — otherwise
+    # Gemini sometimes omits a nullable field from the JSON entirely instead
+    # of reasoning about it and setting it to null, which is indistinguishable
+    # on our end from an explicit "I don't know" and let nextField silently
+    # go missing on some turns.
+    'required': ['reply', 'destination', 'travelStyle', 'travelers', 'budget', 'readyToPlan', 'nextField'],
 }
 
 # Real OpenStreetMap tags for genuinely visitable places — deliberately
@@ -217,8 +222,27 @@ class ChatPlannerView(APIView):
                 return Response({'detail': 'Each message needs a role of user/model and non-empty text.'}, status=status.HTTP_400_BAD_REQUEST)
             contents.append({'role': role, 'parts': [{'text': text}]})
 
+        # This endpoint is stateless — without this, the only way Gemini knows
+        # what's already confirmed is by re-reading its own past reply TEXT
+        # each turn (the frontend only stores the natural-language reply, not
+        # the structured fields it extracted). At an ambiguous turn like a
+        # bare "yes", that let it lose track and mislabel nextField — e.g.
+        # asking about travelers in the reply while nextField still said
+        # travelStyle. Passing the frontend's own tracked slots back as
+        # explicit ground truth removes the guesswork entirely.
+        slots = request.data.get('slots') or {}
+        known_header = (
+            "Confirmed so far (authoritative — trust this over re-reading the conversation, "
+            "only change a field if the user's latest message clearly says something different for it):"
+        )
+        known_lines = '\n'.join(
+            f'- {field}: {slots.get(field) if slots.get(field) is not None else "not yet known"}'
+            for field in ('destination', 'travelStyle', 'travelers', 'budget')
+        )
+        known_summary = f'{known_header}\n{known_lines}'
+
         payload = {
-            'systemInstruction': {'parts': [{'text': CHAT_SYSTEM_INSTRUCTION}]},
+            'systemInstruction': {'parts': [{'text': f'{CHAT_SYSTEM_INSTRUCTION}\n\n{known_summary}'}]},
             'contents': contents,
             'generationConfig': {
                 'responseMimeType': 'application/json',

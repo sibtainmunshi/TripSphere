@@ -16,6 +16,8 @@ export interface PlaceResult {
   fullAddress: string
   lat: number
   lon: number
+  /** True for an actual city/town/village/region/country; false for a business/POI match (e.g. a shop that happens to share the query text). */
+  isRealPlace: boolean
 }
 
 interface NominatimAddress {
@@ -92,6 +94,7 @@ export async function searchPlaces(query: string, signal?: AbortSignal): Promise
       fullAddress: item.display_name,
       lat: Number(item.lat),
       lon: Number(item.lon),
+      isRealPlace: isRealPlaceItem(item),
     })
     if (results.length >= 6) break
   }

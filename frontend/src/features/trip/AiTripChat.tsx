@@ -107,10 +107,45 @@ export function AiTripChat() {
     setThinking(true)
     // Real coordinates/photo lookup (Wikipedia) for whatever this option is
     // still missing — genuinely fetched, not a fixed setTimeout, since this
-    // step now does real work rather than just simulating "thinking".
+    // step now does real work rather than just simulating "thinking". These
+    // are the 5 preset vibes, always real destinations, so no validation
+    // is needed here — see handleCustomDestination for free-typed input.
     enrichWithRealData(chosen).then((enriched) => {
       setDestination(enriched)
       setThinking(false)
+      pushMessage('ai', `Great pick! ${enriched.name} it is. 🎉\nWhat kind of trip are you after?`)
+      setStep(2)
+    })
+  }
+
+  // Small talk isn't a destination — catches exact greetings/acknowledgements
+  // typed at step 1 so the bot doesn't try to "geocode" them. Anchored at
+  // both ends so it never rejects a real place that happens to start with
+  // one of these words (e.g. "Hello Kitty Park" wouldn't be flagged).
+  const NON_DESTINATION_PATTERN =
+    /^(hi|hey|hey there|hello|yo|hola|sup|good\s?(morning|evening|afternoon|day)|thanks?|thank\s?you|ok|okay|cool|nice|great|awesome)[\s!.,]*$/i
+
+  const handleCustomDestination = (raw: string) => {
+    pushMessage('user', raw)
+
+    if (raw.length < 2 || NON_DESTINATION_PATTERN.test(raw)) {
+      pushMessage('ai', "Hey! 👋 Tell me a destination to get started — a city, region or country, like Goa, Manali or Bali.")
+      return
+    }
+
+    setThinking(true)
+    enrichWithRealData(getDestinationForCustomName(raw)).then((enriched) => {
+      setThinking(false)
+      // Neither Wikipedia nor OpenStreetMap could confirm this is a real
+      // place — say so honestly instead of pretending any typed text works.
+      if (enriched.lat == null || enriched.lon == null) {
+        pushMessage(
+          'ai',
+          `I couldn't find a real place called "${raw}" — try a city, region or country name, like Goa, Manali or Bali.`,
+        )
+        return
+      }
+      setDestination(enriched)
       pushMessage('ai', `Great pick! ${enriched.name} it is. 🎉\nWhat kind of trip are you after?`)
       setStep(2)
     })
@@ -160,7 +195,7 @@ export function AiTripChat() {
     setInput('')
 
     if (step === 1) {
-      handleDestination(getDestinationForCustomName(trimmed), trimmed)
+      handleCustomDestination(trimmed)
       return
     }
     if (step === 2) {

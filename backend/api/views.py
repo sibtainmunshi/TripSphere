@@ -13,7 +13,11 @@ logger = logging.getLogger(__name__)
 
 OVERPASS_URL = 'https://overpass-api.de/api/interpreter'
 
-GEMINI_MODEL = 'gemini-2.5-flash'
+# An alias Google keeps pointed at their current recommended flash model,
+# rather than a fixed version — pinned model names get sunset for new
+# projects over time (gemini-2.5-flash already returned a 404 "no longer
+# available to new users" on a freshly created project during testing).
+GEMINI_MODEL = 'gemini-flash-latest'
 GEMINI_URL = f'https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent'
 
 # Keeps the model's job scoped to a single, honest task: hold a natural
@@ -214,7 +218,10 @@ class ChatPlannerView(APIView):
             'generationConfig': {
                 'responseMimeType': 'application/json',
                 'responseSchema': RESPONSE_SCHEMA,
-                'thinkingConfig': {'thinkingBudget': 0},
+                # No thinkingConfig here — gemini-flash-latest currently
+                # rejects it outright (400 INVALID_ARGUMENT) even though the
+                # older pinned gemini-2.5-flash accepted it fine. The small
+                # extra thinking-token cost without it is negligible either way.
             },
         }
 

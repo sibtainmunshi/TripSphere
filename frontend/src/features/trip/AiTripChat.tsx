@@ -7,6 +7,7 @@ import {
   Landmark,
   Mountain,
   PartyPopper,
+  Plus,
   Save,
   Send,
   Users,
@@ -198,6 +199,22 @@ export function AiTripChat() {
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
 
+  const handleNewChat = () => {
+    if (user?.id) localStorage.removeItem(STORAGE_KEY_PREFIX + user.id)
+    setMessages([
+      {
+        id: 'greeting',
+        from: 'ai',
+        text: `Hi ${name}! 👋\nI'm the TripSphere AI planner. Tell me about the trip you're dreaming of — where, with how many people, what kind of vibe, and roughly what budget.`,
+      },
+    ])
+    setSlots(EMPTY_SLOTS)
+    setPlan(null)
+    setEnrichedDestination(null)
+    setInput('')
+    setCreateError(null)
+  }
+
   const handleContinue = async () => {
     if (!plan) return
     setCreating(true)
@@ -241,6 +258,13 @@ export function AiTripChat() {
           <p className="text-sm text-slate">Your personal travel assistant</p>
         </div>
         <div className="flex items-center gap-3">
+          <button
+            onClick={handleNewChat}
+            className="flex items-center gap-1.5 rounded-lg border border-mist px-3.5 py-2 text-sm font-medium text-ink transition-colors hover:bg-cream"
+          >
+            <Plus className="h-4 w-4" />
+            New Chat
+          </button>
           <button className="flex items-center gap-1.5 rounded-lg border border-mist px-3.5 py-2 text-sm font-medium text-ink transition-colors hover:bg-cream">
             <Save className="h-4 w-4" />
             Save as Draft

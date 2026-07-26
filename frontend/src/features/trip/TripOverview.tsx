@@ -19,6 +19,7 @@ import { getBudget, listExpenses } from '@/services/budgetApi'
 import type { TravelDocument } from '@/types/travel'
 import type { Budget, Expense } from '@/types/budget'
 import { useBookingEvents, formatEventTime } from './travelHub/useBookingEvents'
+import { TripCountdown } from './TripCountdown'
 
 export function TripOverview() {
   const { tripId } = useParams<{ tripId: string }>()
@@ -61,7 +62,7 @@ export function TripOverview() {
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-5 px-6 py-8">
-      <div className="grid gap-5 sm:grid-cols-2">
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         <div className="rounded-2xl border border-mist p-5">
           <p className="text-sm font-semibold text-ink">Trip Progress</p>
           <p className="mt-1 text-xs text-slate">
@@ -106,6 +107,8 @@ export function TripOverview() {
             <p className="mt-3 text-sm text-slate">Weather unavailable for this trip.</p>
           )}
         </div>
+
+        <TripCountdown startDate={trip.startDate} />
       </div>
 
       <div className="rounded-2xl border border-mist p-5">

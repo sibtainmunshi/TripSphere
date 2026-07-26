@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Calendar, Camera, Clock, Compass, Sparkles, Users, Wallet } from 'lucide-react'
 import { useDestinationImage } from '@/hooks/useDestinationImage'
+import { useDestinationGallery } from '@/hooks/useDestinationGallery'
 
 interface TripPreviewCardProps {
   name: string
@@ -37,8 +38,25 @@ export function TripPreviewCard({
   memberCount,
   budget,
 }: TripPreviewCardProps) {
-  const [showComingSoon, setShowComingSoon] = useState(false)
-  const image = useDestinationImage(destination)
+  const primaryImage = useDestinationImage(destination)
+  const gallery = useDestinationGallery(destination)
+  // Real infobox photo first (if there is one), then every other genuine
+  // photo Wikipedia has for this place — never a fabricated image to pad
+  // out the count if a destination only has one or zero real photos.
+  const images = useMemo(() => {
+    const galleryUrls = gallery.map((item) => item.url)
+    if (!primaryImage) return galleryUrls
+    return [primaryImage, ...galleryUrls.filter((url) => url !== primaryImage)]
+  }, [primaryImage, gallery])
+
+  const [imageIndex, setImageIndex] = useState(0)
+  useEffect(() => {
+    setImageIndex(0)
+  }, [destination])
+
+  const image = images[imageIndex] ?? null
+  const hasMultipleImages = images.length > 1
+
   const start = formatDate(startDate)
   const end = formatDate(endDate)
   const duration = durationLabel(startDate, endDate)
@@ -63,19 +81,18 @@ export function TripPreviewCard({
           Planning
         </span>
 
-        <div className="absolute top-3 right-3">
-          <button
-            type="button"
-            onClick={() => {
-              setShowComingSoon(true)
-              setTimeout(() => setShowComingSoon(false), 2000)
-            }}
-            className="flex items-center gap-1.5 rounded-full bg-black/50 px-3 py-1.5 text-xs font-medium text-white hover:bg-black/60"
-          >
-            <Camera className="h-3.5 w-3.5" />
-            {showComingSoon ? 'Coming soon' : 'Change Image'}
-          </button>
-        </div>
+        {hasMultipleImages && (
+          <div className="absolute top-3 right-3">
+            <button
+              type="button"
+              onClick={() => setImageIndex((i) => (i + 1) % images.length)}
+              className="flex items-center gap-1.5 rounded-full bg-black/50 px-3 py-1.5 text-xs font-medium text-white hover:bg-black/60"
+            >
+              <Camera className="h-3.5 w-3.5" />
+              Change Image ({imageIndex + 1}/{images.length})
+            </button>
+          </div>
+        )}
 
         <div className="absolute right-3 bottom-3 left-3">
           <p className="truncate text-xl font-bold text-white">{name || 'Trip Name'}</p>

@@ -93,6 +93,11 @@ AUTH_USER_MODEL = 'authentication.User'
 # Empty by default so the endpoint fails loudly (not silently insecure) until set.
 GOOGLE_CLIENT_ID = config('GOOGLE_CLIENT_ID', default='')
 
+# From Google AI Studio (aistudio.google.com) -> Get API key. Powers the real
+# AI Trip Planner chat; blank means that endpoint responds 501 instead of
+# faking a conversation.
+GEMINI_API_KEY = config('GEMINI_API_KEY', default='')
+
 # Used to build links (e.g. password reset) that point back at the SPA.
 FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:5173')
 

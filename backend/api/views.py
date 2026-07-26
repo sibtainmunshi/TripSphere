@@ -1,7 +1,9 @@
+import json
 import logging
 import time
 
 import requests
+from django.conf import settings
 from django.core.cache import cache
 from rest_framework import permissions, status
 from rest_framework.response import Response
@@ -10,6 +12,43 @@ from rest_framework.views import APIView
 logger = logging.getLogger(__name__)
 
 OVERPASS_URL = 'https://overpass-api.de/api/interpreter'
+
+GEMINI_MODEL = 'gemini-2.5-flash'
+GEMINI_URL = f'https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent'
+
+# Keeps the model's job scoped to a single, honest task: hold a natural
+# conversation and extract these 4 fields. It never invents destination
+# facts itself — the frontend independently verifies whatever destination
+# it extracts against real geocoding/Wikipedia data before a trip is ever
+# created, so a confident-sounding hallucination here can't produce a fake
+# "real" place downstream.
+CHAT_SYSTEM_INSTRUCTION = """You are the TripSphere AI trip planner — a warm, concise travel assistant \
+inside the TripSphere app. Have a natural conversation to learn four things about the trip the user \
+wants: destination (any real city/region/country), travel style (must be exactly one of: Relaxed, \
+Adventurous, Cultural, Party), number of travelers (a whole number), and budget in Indian Rupees (a \
+whole number). Ask for whatever is still missing, one or two things at a time, in whatever order feels \
+natural given what the user says — you don't need to ask in a fixed order. If the user goes off-topic \
+or just makes small talk, respond warmly and briefly, then steer back to planning. Keep replies short — \
+2-3 sentences at most, like a chat message, never a long paragraph. Once you have all four fields, \
+confirm them back to the user in the same reply and set readyToPlan to true. If the user changes their \
+mind about something already collected, update it. Never invent a destination the user didn't mention."""
+
+RESPONSE_SCHEMA = {
+    'type': 'OBJECT',
+    'properties': {
+        'reply': {'type': 'STRING'},
+        'destination': {'type': 'STRING', 'nullable': True},
+        'travelStyle': {
+            'type': 'STRING',
+            'nullable': True,
+            'enum': ['Relaxed', 'Adventurous', 'Cultural', 'Party'],
+        },
+        'travelers': {'type': 'INTEGER', 'nullable': True},
+        'budget': {'type': 'INTEGER', 'nullable': True},
+        'readyToPlan': {'type': 'BOOLEAN'},
+    },
+    'required': ['reply', 'readyToPlan'],
+}
 
 # Real OpenStreetMap tags for genuinely visitable places — deliberately
 # excludes generic shops/amenities so the AI Planner only ever suggests
@@ -132,3 +171,78 @@ class NearbyAttractionsView(APIView):
         cache.set(cache_key, results, 60 * 60 * 24)
 
         return Response(results)
+
+
+class ChatPlannerView(APIView):
+    """Real conversational AI Trip Planner, backed by Gemini. Stateless by
+    design — the frontend sends the full message history each turn and this
+    just forwards it, so there's no server-side session to manage. Gemini's
+    only job is holding the conversation and extracting 4 fields; it never
+    gets treated as ground truth for whether a place is real — see
+    destinationOptions.ts's enrichWithRealData for that independent check."""
+
+    def post(self, request):
+        if not settings.GEMINI_API_KEY:
+            return Response(
+                {'detail': 'The AI planner chat is not configured on this server.'},
+                status=status.HTTP_501_NOT_IMPLEMENTED,
+            )
+
+        messages = request.data.get('messages')
+        if not isinstance(messages, list) or not messages:
+            return Response({'detail': 'messages is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        contents = []
+        for message in messages:
+            role = message.get('role')
+            text = message.get('text')
+            if role not in ('user', 'model') or not isinstance(text, str) or not text.strip():
+                return Response({'detail': 'Each message needs a role of user/model and non-empty text.'}, status=status.HTTP_400_BAD_REQUEST)
+            contents.append({'role': role, 'parts': [{'text': text}]})
+
+        payload = {
+            'systemInstruction': {'parts': [{'text': CHAT_SYSTEM_INSTRUCTION}]},
+            'contents': contents,
+            'generationConfig': {
+                'responseMimeType': 'application/json',
+                'responseSchema': RESPONSE_SCHEMA,
+                'thinkingConfig': {'thinkingBudget': 0},
+            },
+        }
+
+        try:
+            response = requests.post(
+                GEMINI_URL,
+                params={'key': settings.GEMINI_API_KEY},
+                json=payload,
+                timeout=20,
+            )
+            response.raise_for_status()
+        except requests.RequestException:
+            logger.exception('Gemini API request failed')
+            return Response(
+                {'detail': 'The AI planner is temporarily unavailable. Please try again.'},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        data = response.json()
+        try:
+            text = data['candidates'][0]['content']['parts'][0]['text']
+            parsed = json.loads(text)
+        except (KeyError, IndexError, ValueError):
+            logger.error('Unexpected Gemini response shape: %s', data)
+            return Response(
+                {'detail': 'The AI planner is temporarily unavailable. Please try again.'},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        return Response(
+            {
+                'reply': parsed.get('reply', ''),
+                'destination': parsed.get('destination'),
+                'travelStyle': parsed.get('travelStyle'),
+                'travelers': parsed.get('travelers'),
+                'budget': parsed.get('budget'),
+                'readyToPlan': bool(parsed.get('readyToPlan')),
+            }
+        )

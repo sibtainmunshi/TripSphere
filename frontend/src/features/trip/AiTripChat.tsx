@@ -1,20 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-  Building2,
-  Compass,
-  Feather,
-  IndianRupee,
-  Landmark,
-  Leaf,
-  Mountain,
-  PartyPopper,
-  Save,
-  Send,
-  Users,
-  Waves,
-  Zap,
-} from 'lucide-react'
+import { Compass, Landmark, Mountain, Save, Send, Waves } from 'lucide-react'
 import logo from '@/assets/logo.svg'
 import { Avatar } from '@/components/Avatar'
 import { useAuthStore } from '@/store/authStore'
@@ -25,13 +11,9 @@ import { QuickReplyChip } from './QuickReplyChip'
 import { StepIndicator } from './StepIndicator'
 import { TripPlanPreview } from './TripPlanPreview'
 import { TripPlanPlaceholder } from './TripPlanPlaceholder'
-import {
-  enrichWithRealData,
-  getDestinationForCustomName,
-  getDestinationForVibe,
-  type DestinationOption,
-} from './destinationOptions'
+import { enrichWithRealData, getDestinationForCustomName, type DestinationOption } from './destinationOptions'
 import { generateTripPlan, type TripPlanData } from './tripPlanMock'
+import { sendPlannerMessage, type ChatMessage } from '@/services/chatPlanner'
 
 interface Message {
   id: string
@@ -39,25 +21,24 @@ interface Message {
   text: string
 }
 
-type Step = 1 | 2 | 3 | 4 | 5
+interface PlannerSlots {
+  destination: string | null
+  travelStyle: string | null
+  travelers: number | null
+  budget: number | null
+}
 
-const VIBES = [
-  { label: 'Beach', icon: Waves },
-  { label: 'Mountains', icon: Mountain },
-  { label: 'City', icon: Building2 },
-  { label: 'Nature', icon: Leaf },
-  { label: 'Anywhere', icon: Compass },
+const EMPTY_SLOTS: PlannerSlots = { destination: null, travelStyle: null, travelers: null, budget: null }
+
+// One-tap conversation starters — still go through the real Gemini chat
+// (not a shortcut around it), just pre-fills a natural first message so
+// typing isn't required to get going.
+const STARTER_SUGGESTIONS = [
+  { label: 'Beach getaway', icon: Waves, text: 'I want a relaxing beach getaway for 2 people, budget around ₹25,000' },
+  { label: 'Mountain adventure', icon: Mountain, text: 'An adventurous mountain trip with 4 friends, budget around ₹40,000' },
+  { label: 'Cultural city break', icon: Landmark, text: 'A cultural city trip for 2 people, budget around ₹50,000' },
+  { label: 'Surprise me', icon: Compass, text: 'Surprise me with a good destination for 3 people, budget around ₹30,000' },
 ]
-
-const STYLES = [
-  { label: 'Relaxed', icon: Feather },
-  { label: 'Adventurous', icon: Zap },
-  { label: 'Cultural', icon: Landmark },
-  { label: 'Party', icon: PartyPopper },
-]
-
-const TRAVELER_OPTIONS = [1, 2, 4, 6]
-const BUDGET_OPTIONS = [15_000, 25_000, 50_000, 100_000]
 
 export function AiTripChat() {
   const navigate = useNavigate()
@@ -69,18 +50,14 @@ export function AiTripChat() {
     {
       id: 'greeting',
       from: 'ai',
-      text: `Hi ${name}! 👋\nI'm the TripSphere AI planner. I'll help you plan the perfect trip. Let's start with the destination.`,
+      text: `Hi ${name}! 👋\nI'm the TripSphere AI planner. Tell me about the trip you're dreaming of — where, with how many people, what kind of vibe, and roughly what budget.`,
     },
-    { id: 'ask-vibe', from: 'ai', text: 'Where would you like to go?' },
   ])
-  const [step, setStep] = useState<Step>(1)
   const [thinking, setThinking] = useState(false)
   const [input, setInput] = useState('')
-
-  const [destination, setDestination] = useState<DestinationOption | null>(null)
-  const [travelStyle, setTravelStyle] = useState<string | null>(null)
-  const [travelers, setTravelers] = useState<number | null>(null)
+  const [slots, setSlots] = useState<PlannerSlots>(EMPTY_SLOTS)
   const [plan, setPlan] = useState<TripPlanData | null>(null)
+  const [enrichedDestination, setEnrichedDestination] = useState<DestinationOption | null>(null)
 
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -92,133 +69,63 @@ export function AiTripChat() {
     setMessages((prev) => [...prev, { id: crypto.randomUUID(), from, text }])
   }
 
-  const advance = (userText: string, botReply: string, next: Step) => {
-    pushMessage('user', userText)
-    setThinking(true)
-    setTimeout(() => {
-      setThinking(false)
-      pushMessage('ai', botReply)
-      setStep(next)
-    }, 800)
-  }
+  // Gemini's job is only to hold the conversation and extract these 4
+  // fields — it's never trusted as ground truth for whether the destination
+  // it heard is a real place. That's checked here, independently, against
+  // Wikipedia/OpenStreetMap, before a trip plan is ever built from it.
+  const buildPlan = async (finalSlots: PlannerSlots) => {
+    if (!finalSlots.destination || !finalSlots.travelStyle || !finalSlots.travelers || !finalSlots.budget) return
 
-  const handleDestination = (chosen: DestinationOption, label: string) => {
-    pushMessage('user', label)
-    setThinking(true)
-    // Real coordinates/photo lookup (Wikipedia) for whatever this option is
-    // still missing — genuinely fetched, not a fixed setTimeout, since this
-    // step now does real work rather than just simulating "thinking". These
-    // are the 5 preset vibes, always real destinations, so no validation
-    // is needed here — see handleCustomDestination for free-typed input.
-    enrichWithRealData(chosen).then((enriched) => {
-      setDestination(enriched)
-      setThinking(false)
-      pushMessage('ai', `Great pick! ${enriched.name} it is. 🎉\nWhat kind of trip are you after?`)
-      setStep(2)
-    })
-  }
+    const enriched = await enrichWithRealData(getDestinationForCustomName(finalSlots.destination))
 
-  // Small talk isn't a destination — catches exact greetings/acknowledgements
-  // typed at step 1 so the bot doesn't try to "geocode" them. Anchored at
-  // both ends so it never rejects a real place that happens to start with
-  // one of these words (e.g. "Hello Kitty Park" wouldn't be flagged).
-  const NON_DESTINATION_PATTERN =
-    /^(hi|hey|hey there|hello|yo|hola|sup|good\s?(morning|evening|afternoon|day)|thanks?|thank\s?you|ok|okay|cool|nice|great|awesome)[\s!.,]*$/i
-
-  const handleCustomDestination = (raw: string) => {
-    pushMessage('user', raw)
-
-    if (raw.length < 2 || NON_DESTINATION_PATTERN.test(raw)) {
-      pushMessage('ai', "Hey! 👋 Tell me a destination to get started — a city, region or country, like Goa, Manali or Bali.")
+    if (enriched.lat == null || enriched.lon == null) {
+      pushMessage(
+        'ai',
+        `I couldn't confirm "${finalSlots.destination}" as a real place — could you try a real city, region or country name?`,
+      )
+      setSlots((prev) => ({ ...prev, destination: null }))
       return
     }
 
-    setThinking(true)
-    enrichWithRealData(getDestinationForCustomName(raw)).then((enriched) => {
-      setThinking(false)
-      // Neither Wikipedia nor OpenStreetMap could confirm this is a real
-      // place — say so honestly instead of pretending any typed text works.
-      if (enriched.lat == null || enriched.lon == null) {
-        pushMessage(
-          'ai',
-          `I couldn't find a real place called "${raw}" — try a city, region or country name, like Goa, Manali or Bali.`,
-        )
-        return
-      }
-      setDestination(enriched)
-      pushMessage('ai', `Great pick! ${enriched.name} it is. 🎉\nWhat kind of trip are you after?`)
-      setStep(2)
-    })
+    setEnrichedDestination(enriched)
+    setPlan(generateTripPlan(enriched, finalSlots.travelStyle, finalSlots.travelers, finalSlots.budget))
   }
 
-  const handleStyle = (style: string) => {
-    setTravelStyle(style)
-    advance(style, `Love it — ${style.toLowerCase()} sounds perfect.\nHow many travelers are joining?`, 3)
-  }
-
-  const handleTravelers = (count: number) => {
-    setTravelers(count)
-    advance(
-      `${count} traveler${count === 1 ? '' : 's'}`,
-      `Got it, ${count} traveler${count === 1 ? '' : 's'}.\nWhat's your budget for this trip?`,
-      4,
-    )
-  }
-
-  const handleBudget = (amount: number) => {
-    if (!destination || !travelStyle || !travelers) return
-    pushMessage('user', `₹${amount.toLocaleString('en-IN')}`)
-    setThinking(true)
-    setTimeout(() => {
-      setThinking(false)
-      pushMessage('ai', "Here's what I've put together for you! ✨")
-      setPlan(generateTripPlan(destination, travelStyle, travelers, amount))
-      setStep(5)
-    }, 1400)
-  }
-
-  const parseTravelers = (text: string): number | null => {
-    const match = text.match(/\d+/)
-    if (!match) return null
-    return Math.max(1, Math.min(20, Number(match[0])))
-  }
-
-  const parseBudget = (text: string): number | null => {
-    const digits = text.replace(/[^\d]/g, '')
-    if (!digits) return null
-    return Math.max(1000, Number(digits))
-  }
-
-  const handleSend = () => {
-    const trimmed = input.trim()
-    if (!trimmed || thinking) return
+  const handleSend = async (overrideText?: string) => {
+    const trimmed = (overrideText ?? input).trim()
+    if (!trimmed || thinking || plan) return
     setInput('')
 
-    if (step === 1) {
-      handleCustomDestination(trimmed)
-      return
-    }
-    if (step === 2) {
-      const matched = STYLES.find((s) => s.label.toLowerCase() === trimmed.toLowerCase())
-      handleStyle(matched?.label ?? 'Relaxed')
-      return
-    }
-    if (step === 3) {
-      const count = parseTravelers(trimmed)
-      if (count) handleTravelers(count)
-      return
-    }
-    if (step === 4) {
-      const amount = parseBudget(trimmed)
-      if (amount) handleBudget(amount)
-      return
+    const nextMessages: Message[] = [...messages, { id: crypto.randomUUID(), from: 'user', text: trimmed }]
+    setMessages(nextMessages)
+    setThinking(true)
+
+    const history: ChatMessage[] = nextMessages.map((m) => ({ role: m.from === 'user' ? 'user' : 'model', text: m.text }))
+
+    try {
+      const result = await sendPlannerMessage(history)
+      pushMessage('ai', result.reply)
+      setThinking(false)
+
+      const newSlots: PlannerSlots = {
+        destination: result.destination ?? slots.destination,
+        travelStyle: result.travelStyle ?? slots.travelStyle,
+        travelers: result.travelers ?? slots.travelers,
+        budget: result.budget ?? slots.budget,
+      }
+      setSlots(newSlots)
+
+      if (result.readyToPlan) await buildPlan(newSlots)
+    } catch {
+      pushMessage('ai', "Sorry, I'm having trouble connecting right now — please try again in a moment.")
+      setThinking(false)
     }
   }
 
   const handleRegenerate = () => {
-    if (!destination || !travelStyle || !travelers || !plan) return
+    if (!enrichedDestination || !slots.travelStyle || !slots.travelers || !plan) return
     const amount = Number(plan.estimatedBudget.replace(/[^\d]/g, ''))
-    setPlan(generateTripPlan(destination, travelStyle, travelers, amount))
+    setPlan(generateTripPlan(enrichedDestination, slots.travelStyle, slots.travelers, amount))
   }
 
   const [creating, setCreating] = useState(false)
@@ -247,13 +154,13 @@ export function AiTripChat() {
     }
   }
 
-  const placeholderForStep: Record<Step, string> = {
-    1: 'e.g. Goa, or describe a vibe...',
-    2: 'e.g. Relaxed, Adventurous...',
-    3: 'e.g. 4',
-    4: 'e.g. 25000',
-    5: 'Trip plan ready — scroll right',
-  }
+  // Purely a visual progress cue now — Gemini fills these in whatever order
+  // the conversation naturally goes, not a fixed sequence, so this is an
+  // approximation (slots filled so far) rather than a strict step number.
+  const filledCount = [slots.destination, slots.travelStyle, slots.travelers, slots.budget].filter(
+    (value) => value != null,
+  ).length
+  const currentStep = plan ? 5 : Math.min(4, filledCount + 1)
 
   return (
     <div className="flex h-full flex-col">
@@ -275,7 +182,7 @@ export function AiTripChat() {
       </div>
 
       <div className="border-b border-mist">
-        <StepIndicator currentStep={step} />
+        <StepIndicator currentStep={currentStep} />
       </div>
 
       <div className="grid flex-1 grid-cols-2 overflow-hidden">
@@ -295,48 +202,14 @@ export function AiTripChat() {
                 </div>
               ))}
 
-              {!thinking && step === 1 && (
+              {!thinking && messages.length === 1 && !plan && (
                 <div className="ml-10 flex flex-wrap gap-2">
-                  {VIBES.map((vibe) => (
+                  {STARTER_SUGGESTIONS.map((suggestion) => (
                     <QuickReplyChip
-                      key={vibe.label}
-                      label={vibe.label}
-                      icon={vibe.icon}
-                      onClick={() => handleDestination(getDestinationForVibe(vibe.label), vibe.label)}
-                    />
-                  ))}
-                </div>
-              )}
-
-              {!thinking && step === 2 && (
-                <div className="ml-10 flex flex-wrap gap-2">
-                  {STYLES.map((s) => (
-                    <QuickReplyChip key={s.label} label={s.label} icon={s.icon} onClick={() => handleStyle(s.label)} />
-                  ))}
-                </div>
-              )}
-
-              {!thinking && step === 3 && (
-                <div className="ml-10 flex flex-wrap gap-2">
-                  {TRAVELER_OPTIONS.map((count) => (
-                    <QuickReplyChip
-                      key={count}
-                      label={`${count}${count === 6 ? '+' : ''}`}
-                      icon={Users}
-                      onClick={() => handleTravelers(count)}
-                    />
-                  ))}
-                </div>
-              )}
-
-              {!thinking && step === 4 && (
-                <div className="ml-10 flex flex-wrap gap-2">
-                  {BUDGET_OPTIONS.map((amount) => (
-                    <QuickReplyChip
-                      key={amount}
-                      label={`₹${amount.toLocaleString('en-IN')}${amount === 100_000 ? '+' : ''}`}
-                      icon={IndianRupee}
-                      onClick={() => handleBudget(amount)}
+                      key={suggestion.label}
+                      label={suggestion.label}
+                      icon={suggestion.icon}
+                      onClick={() => handleSend(suggestion.text)}
                     />
                   ))}
                 </div>
@@ -357,13 +230,13 @@ export function AiTripChat() {
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
                 onKeyDown={(event) => event.key === 'Enter' && handleSend()}
-                disabled={thinking || step === 5}
-                placeholder={placeholderForStep[step]}
+                disabled={thinking || !!plan}
+                placeholder="Tell me about your dream trip..."
                 className="flex-1 rounded-full border border-mist px-4 py-2.5 text-sm outline-none placeholder:text-slate/60 focus:border-ocean disabled:bg-cream"
               />
               <button
-                onClick={handleSend}
-                disabled={thinking || step === 5 || !input.trim()}
+                onClick={() => handleSend()}
+                disabled={thinking || !!plan || !input.trim()}
                 aria-label="Send message"
                 className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ocean text-white transition-colors hover:bg-ocean-dark disabled:opacity-40"
               >

@@ -1,6 +1,6 @@
 from django.urls import include, path
 
-from .views import NearbyAttractionsView
+from .views import ChatPlannerView, NearbyAttractionsView
 
 # Feature apps register their endpoints here as each milestone's UI is
 # approved and its backend is built.
@@ -9,4 +9,5 @@ urlpatterns = [
     path('', include('workspace.urls')),
     path('', include('travel.urls')),
     path('attractions/', NearbyAttractionsView.as_view(), name='nearby-attractions'),
+    path('chat-planner/', ChatPlannerView.as_view(), name='chat-planner'),
 ]

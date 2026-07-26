@@ -2,6 +2,8 @@
 
 @theme {
   --font-sans: "Manrope", system-ui, "Segoe UI", Roboto, sans-serif;
+  /* Decorative headings only (trip name, greetings) — never body text. */
+  --font-script: "Caveat", cursive;
 
   /* Ocean Luxury — primary palette */
   --color-navy: #081c2d;

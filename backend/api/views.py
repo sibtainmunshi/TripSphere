@@ -31,7 +31,10 @@ natural given what the user says — you don't need to ask in a fixed order. If 
 or just makes small talk, respond warmly and briefly, then steer back to planning. Keep replies short — \
 2-3 sentences at most, like a chat message, never a long paragraph. Once you have all four fields, \
 confirm them back to the user in the same reply and set readyToPlan to true. If the user changes their \
-mind about something already collected, update it. Never invent a destination the user didn't mention."""
+mind about something already collected, update it. Never invent a destination the user didn't mention. \
+Also set nextField to exactly which one of destination/travelStyle/travelers/budget your reply is \
+currently asking the user for — this MUST match what your reply text actually asks, since the app shows \
+matching quick-reply buttons for it. Set nextField to null once readyToPlan is true."""
 
 RESPONSE_SCHEMA = {
     'type': 'OBJECT',
@@ -46,6 +49,11 @@ RESPONSE_SCHEMA = {
         'travelers': {'type': 'INTEGER', 'nullable': True},
         'budget': {'type': 'INTEGER', 'nullable': True},
         'readyToPlan': {'type': 'BOOLEAN'},
+        'nextField': {
+            'type': 'STRING',
+            'nullable': True,
+            'enum': ['destination', 'travelStyle', 'travelers', 'budget'],
+        },
     },
     'required': ['reply', 'readyToPlan'],
 }
@@ -244,5 +252,6 @@ class ChatPlannerView(APIView):
                 'travelers': parsed.get('travelers'),
                 'budget': parsed.get('budget'),
                 'readyToPlan': bool(parsed.get('readyToPlan')),
+                'nextField': parsed.get('nextField'),
             }
         )

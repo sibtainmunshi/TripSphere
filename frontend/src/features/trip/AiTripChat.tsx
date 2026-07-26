@@ -28,7 +28,7 @@ import { TripPlanPreview } from './TripPlanPreview'
 import { TripPlanPlaceholder } from './TripPlanPlaceholder'
 import { enrichWithRealData, getDestinationForCustomName, type DestinationOption } from './destinationOptions'
 import { generateTripPlan, type TripPlanData } from './tripPlanMock'
-import { sendPlannerMessage, type ChatMessage, type ChatPlannerResult } from '@/services/chatPlanner'
+import { sendPlannerMessage, type ChatMessage, type ChatPlannerResult, type PlannerField } from '@/services/chatPlanner'
 
 interface Message {
   id: string
@@ -50,6 +50,10 @@ interface ChatSession {
   slots: PlannerSlots
   plan: TripPlanData | null
   enrichedDestination: DestinationOption | null
+  /** Which field the last AI reply asked about — drives which quick-reply
+   * chips show. Optional so older saved sessions (pre-dating this field)
+   * still load fine, just falling back to a best guess. */
+  nextField?: PlannerField | null
 }
 
 const EMPTY_SLOTS: PlannerSlots = { destination: null, travelStyle: null, travelers: null, budget: null }
@@ -104,6 +108,7 @@ function makeEmptySession(name: string): ChatSession {
     slots: EMPTY_SLOTS,
     plan: null,
     enrichedDestination: null,
+    nextField: 'destination',
   }
 }
 
@@ -142,6 +147,7 @@ function migrateLegacySession(userId: string | undefined): ChatSession | null {
       slots: legacy.slots ?? EMPTY_SLOTS,
       plan: legacy.plan ?? null,
       enrichedDestination: legacy.enrichedDestination ?? null,
+      nextField: null,
     }
   } catch {
     return null
@@ -204,6 +210,7 @@ export function AiTripChat() {
   const [enrichedDestination, setEnrichedDestination] = useState<DestinationOption | null>(
     initial.active.enrichedDestination,
   )
+  const [nextField, setNextField] = useState<PlannerField | null>(initial.active.nextField ?? 'destination')
 
   useEffect(() => {
     if (!user?.id) return
@@ -213,12 +220,20 @@ export function AiTripChat() {
     if (messages.length <= 1 && !plan) return
 
     setSessions((prev) => {
-      const updated: ChatSession = { id: activeSessionId, updatedAt: Date.now(), messages, slots, plan, enrichedDestination }
+      const updated: ChatSession = {
+        id: activeSessionId,
+        updatedAt: Date.now(),
+        messages,
+        slots,
+        plan,
+        enrichedDestination,
+        nextField,
+      }
       const next = [updated, ...prev.filter((s) => s.id !== activeSessionId)]
       saveSessions(user.id, next)
       return next
     })
-  }, [messages, slots, plan, enrichedDestination, activeSessionId, user?.id])
+  }, [messages, slots, plan, enrichedDestination, nextField, activeSessionId, user?.id])
 
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -267,6 +282,7 @@ export function AiTripChat() {
       const result = await sendPlannerMessageWithRetry(history)
       pushMessage('ai', result.reply)
       setThinking(false)
+      setNextField(result.nextField)
 
       const newSlots: PlannerSlots = {
         destination: result.destination ?? slots.destination,
@@ -299,6 +315,7 @@ export function AiTripChat() {
     setSlots(EMPTY_SLOTS)
     setPlan(null)
     setEnrichedDestination(null)
+    setNextField(fresh.nextField ?? 'destination')
     setInput('')
     setCreateError(null)
     setHistoryOpen(false)
@@ -310,6 +327,7 @@ export function AiTripChat() {
     setSlots(session.slots)
     setPlan(session.plan)
     setEnrichedDestination(session.enrichedDestination)
+    setNextField(session.nextField ?? null)
     setInput('')
     setCreateError(null)
     setHistoryOpen(false)
@@ -361,6 +379,21 @@ export function AiTripChat() {
   const currentStep = plan ? 5 : Math.min(4, filledCount + 1)
 
   const sortedSessions = [...sessions].sort((a, b) => b.updatedAt - a.updatedAt)
+
+  // Which chip set to show is driven by what Gemini's reply actually asked
+  // for (nextField), not a fixed guess — it can ask about these in whatever
+  // order fits the conversation. Falls back to a best guess only if a
+  // response ever comes back without it (e.g. an older cached session).
+  const effectiveNextField: PlannerField | null =
+    nextField !== undefined && nextField !== null
+      ? nextField
+      : !slots.travelStyle
+        ? 'travelStyle'
+        : !slots.travelers
+          ? 'travelers'
+          : !slots.budget
+            ? 'budget'
+            : null
 
   return (
     <div className="flex h-full flex-col">
@@ -472,12 +505,13 @@ export function AiTripChat() {
                 </div>
               )}
 
-              {/* Only whichever field Gemini still needs next gets shown — never all
-                  three at once, so it reads as one question at a time like the chat
-                  itself, not a form dump. */}
+              {/* Which chip set shows is driven by effectiveNextField (what Gemini's
+                  reply actually just asked about), not a fixed guess — otherwise the
+                  chips can ask about something completely different from the text
+                  above them. */}
               {!thinking && messages.length > 1 && !plan && (
                 <>
-                  {!slots.travelStyle && (
+                  {effectiveNextField === 'travelStyle' && (
                     <div className="ml-10 flex flex-col gap-1.5">
                       <p className="text-xs text-slate">Pick one, or describe it yourself:</p>
                       <div className="flex flex-wrap gap-2">
@@ -492,7 +526,7 @@ export function AiTripChat() {
                       </div>
                     </div>
                   )}
-                  {slots.travelStyle && !slots.travelers && (
+                  {effectiveNextField === 'travelers' && (
                     <div className="ml-10 flex flex-col gap-1.5">
                       <p className="text-xs text-slate">Pick one, or describe it yourself:</p>
                       <div className="flex flex-wrap gap-2">
@@ -507,7 +541,7 @@ export function AiTripChat() {
                       </div>
                     </div>
                   )}
-                  {slots.travelStyle && slots.travelers && !slots.budget && (
+                  {effectiveNextField === 'budget' && (
                     <div className="ml-10 flex flex-col gap-1.5">
                       <p className="text-xs text-slate">Pick one, or describe it yourself:</p>
                       <div className="flex flex-wrap gap-2">

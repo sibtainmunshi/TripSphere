@@ -12,6 +12,8 @@ export interface ChatMessage {
   text: string
 }
 
+export type PlannerField = 'destination' | 'travelStyle' | 'travelers' | 'budget'
+
 export interface ChatPlannerResult {
   reply: string
   destination: string | null
@@ -19,6 +21,11 @@ export interface ChatPlannerResult {
   travelers: number | null
   budget: number | null
   readyToPlan: boolean
+  /** Which field `reply` is actually asking the user for right now — lets the
+   * UI show matching quick-reply chips instead of guessing from a fixed
+   * order, since Gemini can ask about these in whatever order fits the
+   * conversation. */
+  nextField: PlannerField | null
 }
 
 export async function sendPlannerMessage(messages: ChatMessage[]): Promise<ChatPlannerResult> {

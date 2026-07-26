@@ -24,7 +24,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = config('SECRET_KEY', default='django-insecure-xaknc1!%k$raze$4835_&8znx0ct!)$2b8iggkjjlqguz0^0ij')
+SECRET_KEY = config('SECRET_KEY', default='django-insecure-xaknc1!%k$raze$4835_&8znx0ct!)$2b8iggkjjlqguz0^0ij').strip()
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=True, cast=bool)
@@ -91,15 +91,19 @@ AUTH_USER_MODEL = 'authentication.User'
 
 # From Google Cloud Console -> APIs & Services -> Credentials -> OAuth client ID.
 # Empty by default so the endpoint fails loudly (not silently insecure) until set.
-GOOGLE_CLIENT_ID = config('GOOGLE_CLIENT_ID', default='')
+# .strip() guards against a dashboard paste picking up a trailing newline —
+# that alone is enough to turn a valid credential into a silent 401 (bit us
+# for real with GEMINI_API_KEY on Render), so every credential value below
+# gets the same treatment.
+GOOGLE_CLIENT_ID = config('GOOGLE_CLIENT_ID', default='').strip()
 
 # From Google AI Studio (aistudio.google.com) -> Get API key. Powers the real
 # AI Trip Planner chat; blank means that endpoint responds 501 instead of
 # faking a conversation.
-GEMINI_API_KEY = config('GEMINI_API_KEY', default='')
+GEMINI_API_KEY = config('GEMINI_API_KEY', default='').strip()
 
 # Used to build links (e.g. password reset) that point back at the SPA.
-FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:5173')
+FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:5173').strip()
 
 # Email, in priority order:
 #  1. Resend (HTTPS API) — works everywhere, including hosts like Render's
@@ -109,9 +113,9 @@ FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:5173')
 #  2. Gmail SMTP — kept for environments that DON'T block SMTP (e.g. local
 #     dev, a VPS), in case Resend isn't configured.
 #  3. Console backend — prints the email instead of silently no-op'ing.
-RESEND_API_KEY = config('RESEND_API_KEY', default='')
-EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
-EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+RESEND_API_KEY = config('RESEND_API_KEY', default='').strip()
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='').strip()
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='').strip()
 
 if RESEND_API_KEY:
     EMAIL_BACKEND = 'anymail.backends.resend.EmailBackend'
@@ -223,9 +227,9 @@ MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 CLOUDINARY_STORAGE = {
-    'CLOUD_NAME': config('CLOUDINARY_CLOUD_NAME', default=''),
-    'API_KEY': config('CLOUDINARY_API_KEY', default=''),
-    'API_SECRET': config('CLOUDINARY_API_SECRET', default=''),
+    'CLOUD_NAME': config('CLOUDINARY_CLOUD_NAME', default='').strip(),
+    'API_KEY': config('CLOUDINARY_API_KEY', default='').strip(),
+    'API_SECRET': config('CLOUDINARY_API_SECRET', default='').strip(),
 }
 
 # Real Cloudinary storage once credentials are set; otherwise uploads still

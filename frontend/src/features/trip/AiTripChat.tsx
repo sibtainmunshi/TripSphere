@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type MouseEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Compass,
   Feather,
+  History,
   IndianRupee,
   Landmark,
   Mountain,
@@ -12,6 +13,7 @@ import {
   Send,
   Users,
   Waves,
+  X,
   Zap,
 } from 'lucide-react'
 import logo from '@/assets/logo.svg'
@@ -26,7 +28,7 @@ import { TripPlanPreview } from './TripPlanPreview'
 import { TripPlanPlaceholder } from './TripPlanPlaceholder'
 import { enrichWithRealData, getDestinationForCustomName, type DestinationOption } from './destinationOptions'
 import { generateTripPlan, type TripPlanData } from './tripPlanMock'
-import { sendPlannerMessage, type ChatMessage } from '@/services/chatPlanner'
+import { sendPlannerMessage, type ChatMessage, type ChatPlannerResult } from '@/services/chatPlanner'
 
 interface Message {
   id: string
@@ -39,6 +41,15 @@ interface PlannerSlots {
   travelStyle: string | null
   travelers: number | null
   budget: number | null
+}
+
+interface ChatSession {
+  id: string
+  updatedAt: number
+  messages: Message[]
+  slots: PlannerSlots
+  plan: TripPlanData | null
+  enrichedDestination: DestinationOption | null
 }
 
 const EMPTY_SLOTS: PlannerSlots = { destination: null, travelStyle: null, travelers: null, budget: null }
@@ -67,27 +78,103 @@ const STYLE_OPTIONS = [
 const TRAVELER_OPTIONS = [1, 2, 4, 6]
 const BUDGET_OPTIONS = [15_000, 25_000, 50_000, 100_000]
 
-// Keeps an in-progress conversation alive across a refresh or a re-login —
-// without this it only ever lived in React state, so reloading the page
-// silently threw away everything Gemini had already learned about the trip.
-// Scoped per user so a shared/public browser doesn't leak one account's
-// planning chat into another's.
-const STORAGE_KEY_PREFIX = 'tripsphere:ai-planner:'
+// Every conversation is saved as its own session (not one slot that gets
+// overwritten) so "New Chat" doesn't throw away whatever was there before —
+// old conversations stay reachable from the History dropdown. Scoped per
+// user so a shared/public browser doesn't leak one account's chats into
+// another's.
+const SESSIONS_KEY_PREFIX = 'tripsphere:ai-planner-sessions:'
+// Where conversations lived before History existed — migrated once into the
+// new sessions list on first load rather than silently dropped.
+const LEGACY_STORAGE_KEY_PREFIX = 'tripsphere:ai-planner:'
 
-interface PersistedPlannerState {
-  messages: Message[]
-  slots: PlannerSlots
-  plan: TripPlanData | null
-  enrichedDestination: DestinationOption | null
+function greetingMessage(name: string): Message {
+  return {
+    id: 'greeting',
+    from: 'ai',
+    text: `Hi ${name}! 👋\nI'm the TripSphere AI planner. Tell me about the trip you're dreaming of — where, with how many people, what kind of vibe, and roughly what budget.`,
+  }
 }
 
-function loadPersistedState(userId: string | undefined): PersistedPlannerState | null {
+function makeEmptySession(name: string): ChatSession {
+  return {
+    id: crypto.randomUUID(),
+    updatedAt: Date.now(),
+    messages: [greetingMessage(name)],
+    slots: EMPTY_SLOTS,
+    plan: null,
+    enrichedDestination: null,
+  }
+}
+
+function loadSessions(userId: string | undefined): ChatSession[] {
+  if (!userId) return []
+  try {
+    const raw = localStorage.getItem(SESSIONS_KEY_PREFIX + userId)
+    const parsed: unknown = raw ? JSON.parse(raw) : []
+    return Array.isArray(parsed) ? (parsed as ChatSession[]) : []
+  } catch {
+    return []
+  }
+}
+
+function saveSessions(userId: string | undefined, sessions: ChatSession[]) {
+  if (!userId) return
+  try {
+    localStorage.setItem(SESSIONS_KEY_PREFIX + userId, JSON.stringify(sessions))
+  } catch {
+    // Private browsing / storage full — losing history silently is fine.
+  }
+}
+
+function migrateLegacySession(userId: string | undefined): ChatSession | null {
   if (!userId) return null
   try {
-    const raw = localStorage.getItem(STORAGE_KEY_PREFIX + userId)
-    return raw ? (JSON.parse(raw) as PersistedPlannerState) : null
+    const raw = localStorage.getItem(LEGACY_STORAGE_KEY_PREFIX + userId)
+    if (!raw) return null
+    localStorage.removeItem(LEGACY_STORAGE_KEY_PREFIX + userId)
+    const legacy = JSON.parse(raw) as Partial<ChatSession>
+    if (!legacy.messages || legacy.messages.length <= 1) return null
+    return {
+      id: crypto.randomUUID(),
+      updatedAt: Date.now(),
+      messages: legacy.messages,
+      slots: legacy.slots ?? EMPTY_SLOTS,
+      plan: legacy.plan ?? null,
+      enrichedDestination: legacy.enrichedDestination ?? null,
+    }
   } catch {
     return null
+  }
+}
+
+function sessionTitle(session: ChatSession): string {
+  if (session.slots.destination) return `${session.slots.destination} trip`
+  const firstUserMessage = session.messages.find((m) => m.from === 'user')
+  if (firstUserMessage) {
+    return firstUserMessage.text.length > 36 ? `${firstUserMessage.text.slice(0, 36)}…` : firstUserMessage.text
+  }
+  return 'New conversation'
+}
+
+function relativeTime(timestamp: number): string {
+  const minutes = Math.round((Date.now() - timestamp) / 60_000)
+  if (minutes < 1) return 'just now'
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.round(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  return `${Math.round(hours / 24)}d ago`
+}
+
+// The free-tier backend can take 50+ seconds to wake up after being idle,
+// which sometimes trips the very first request after a gap — one silent
+// retry clears most of these instead of surfacing a "connection" error for
+// something that would have worked a few seconds later.
+async function sendPlannerMessageWithRetry(history: ChatMessage[]): Promise<ChatPlannerResult> {
+  try {
+    return await sendPlannerMessage(history)
+  } catch {
+    return await sendPlannerMessage(history)
   }
 }
 
@@ -97,35 +184,41 @@ export function AiTripChat() {
   const createTrip = useTripStore((state) => state.createTrip)
   const name = user?.name ?? 'there'
 
-  const [persisted] = useState(() => loadPersistedState(user?.id))
+  const [initial] = useState(() => {
+    const migrated = migrateLegacySession(user?.id)
+    const existing = loadSessions(user?.id)
+    const sessions = migrated ? [migrated, ...existing] : existing
+    const active = [...sessions].sort((a, b) => b.updatedAt - a.updatedAt)[0] ?? makeEmptySession(name)
+    return { sessions, active }
+  })
 
-  const [messages, setMessages] = useState<Message[]>(
-    persisted?.messages ?? [
-      {
-        id: 'greeting',
-        from: 'ai',
-        text: `Hi ${name}! 👋\nI'm the TripSphere AI planner. Tell me about the trip you're dreaming of — where, with how many people, what kind of vibe, and roughly what budget.`,
-      },
-    ],
-  )
+  const [sessions, setSessions] = useState<ChatSession[]>(initial.sessions)
+  const [activeSessionId, setActiveSessionId] = useState(initial.active.id)
+  const [historyOpen, setHistoryOpen] = useState(false)
+
+  const [messages, setMessages] = useState<Message[]>(initial.active.messages)
   const [thinking, setThinking] = useState(false)
   const [input, setInput] = useState('')
-  const [slots, setSlots] = useState<PlannerSlots>(persisted?.slots ?? EMPTY_SLOTS)
-  const [plan, setPlan] = useState<TripPlanData | null>(persisted?.plan ?? null)
+  const [slots, setSlots] = useState<PlannerSlots>(initial.active.slots)
+  const [plan, setPlan] = useState<TripPlanData | null>(initial.active.plan)
   const [enrichedDestination, setEnrichedDestination] = useState<DestinationOption | null>(
-    persisted?.enrichedDestination ?? null,
+    initial.active.enrichedDestination,
   )
 
   useEffect(() => {
     if (!user?.id) return
-    try {
-      const toSave: PersistedPlannerState = { messages, slots, plan, enrichedDestination }
-      localStorage.setItem(STORAGE_KEY_PREFIX + user.id, JSON.stringify(toSave))
-    } catch {
-      // Private browsing / storage full — losing persistence silently is
-      // fine, it just means this session behaves like it used to.
-    }
-  }, [messages, slots, plan, enrichedDestination, user?.id])
+    // An untouched session (just the greeting, no plan) isn't worth saving —
+    // keeps "New Chat" from cluttering History until there's something real
+    // to resume.
+    if (messages.length <= 1 && !plan) return
+
+    setSessions((prev) => {
+      const updated: ChatSession = { id: activeSessionId, updatedAt: Date.now(), messages, slots, plan, enrichedDestination }
+      const next = [updated, ...prev.filter((s) => s.id !== activeSessionId)]
+      saveSessions(user.id, next)
+      return next
+    })
+  }, [messages, slots, plan, enrichedDestination, activeSessionId, user?.id])
 
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -171,7 +264,7 @@ export function AiTripChat() {
     const history: ChatMessage[] = nextMessages.map((m) => ({ role: m.from === 'user' ? 'user' : 'model', text: m.text }))
 
     try {
-      const result = await sendPlannerMessage(history)
+      const result = await sendPlannerMessageWithRetry(history)
       pushMessage('ai', result.reply)
       setThinking(false)
 
@@ -200,19 +293,34 @@ export function AiTripChat() {
   const [createError, setCreateError] = useState<string | null>(null)
 
   const handleNewChat = () => {
-    if (user?.id) localStorage.removeItem(STORAGE_KEY_PREFIX + user.id)
-    setMessages([
-      {
-        id: 'greeting',
-        from: 'ai',
-        text: `Hi ${name}! 👋\nI'm the TripSphere AI planner. Tell me about the trip you're dreaming of — where, with how many people, what kind of vibe, and roughly what budget.`,
-      },
-    ])
+    const fresh = makeEmptySession(name)
+    setActiveSessionId(fresh.id)
+    setMessages(fresh.messages)
     setSlots(EMPTY_SLOTS)
     setPlan(null)
     setEnrichedDestination(null)
     setInput('')
     setCreateError(null)
+    setHistoryOpen(false)
+  }
+
+  const handleSelectSession = (session: ChatSession) => {
+    setActiveSessionId(session.id)
+    setMessages(session.messages)
+    setSlots(session.slots)
+    setPlan(session.plan)
+    setEnrichedDestination(session.enrichedDestination)
+    setInput('')
+    setCreateError(null)
+    setHistoryOpen(false)
+  }
+
+  const handleDeleteSession = (sessionId: string, event: MouseEvent) => {
+    event.stopPropagation()
+    const next = sessions.filter((s) => s.id !== sessionId)
+    setSessions(next)
+    saveSessions(user?.id, next)
+    if (sessionId === activeSessionId) handleNewChat()
   }
 
   const handleContinue = async () => {
@@ -231,10 +339,12 @@ export function AiTripChat() {
         lat: plan.lat,
         lon: plan.lon,
       })
-      // The trip this conversation was building now exists for real —
-      // clear it so the next visit to the planner starts a fresh chat
-      // instead of resuming one that's already been turned into a trip.
-      if (user?.id) localStorage.removeItem(STORAGE_KEY_PREFIX + user.id)
+      // The trip this conversation was building now exists for real — drop
+      // it from history so it doesn't linger as a "conversation" once it's
+      // already a real trip on the Trips page.
+      const next = sessions.filter((s) => s.id !== activeSessionId)
+      setSessions(next)
+      saveSessions(user?.id, next)
       navigate(`/trips/${trip.id}`)
     } catch {
       setCreateError('Could not create your trip. Please try again.')
@@ -250,6 +360,8 @@ export function AiTripChat() {
   ).length
   const currentStep = plan ? 5 : Math.min(4, filledCount + 1)
 
+  const sortedSessions = [...sessions].sort((a, b) => b.updatedAt - a.updatedAt)
+
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b border-mist px-8 py-5">
@@ -258,9 +370,56 @@ export function AiTripChat() {
           <p className="text-sm text-slate">Your personal travel assistant</p>
         </div>
         <div className="flex items-center gap-3">
+          <div className="relative">
+            <button
+              onClick={() => setHistoryOpen((open) => !open)}
+              disabled={thinking}
+              className={`flex items-center gap-1.5 rounded-lg border border-mist px-3.5 py-2 text-sm font-medium text-ink transition-colors hover:bg-cream disabled:opacity-40 ${
+                historyOpen ? 'bg-cream' : ''
+              }`}
+            >
+              <History className="h-4 w-4" />
+              History
+            </button>
+
+            {historyOpen && (
+              <div className="absolute top-full right-0 z-10 mt-1 max-h-80 w-72 overflow-y-auto rounded-lg border border-mist bg-white p-2 shadow-lg">
+                {sortedSessions.length === 0 ? (
+                  <p className="p-3 text-sm text-slate">No past conversations yet.</p>
+                ) : (
+                  sortedSessions.map((session) => (
+                    <div
+                      key={session.id}
+                      onClick={() => handleSelectSession(session)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(event) => event.key === 'Enter' && handleSelectSession(session)}
+                      className={`flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-cream ${
+                        session.id === activeSessionId ? 'bg-ocean/10 text-ocean' : 'text-ink'
+                      }`}
+                    >
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate font-medium">{sessionTitle(session)}</span>
+                        <span className="block text-xs text-slate">{relativeTime(session.updatedAt)}</span>
+                      </span>
+                      <button
+                        onClick={(event) => handleDeleteSession(session.id, event)}
+                        aria-label="Delete conversation"
+                        className="shrink-0 rounded p-1 text-slate hover:bg-mist hover:text-ink"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+
           <button
             onClick={handleNewChat}
-            className="flex items-center gap-1.5 rounded-lg border border-mist px-3.5 py-2 text-sm font-medium text-ink transition-colors hover:bg-cream"
+            disabled={thinking}
+            className="flex items-center gap-1.5 rounded-lg border border-mist px-3.5 py-2 text-sm font-medium text-ink transition-colors hover:bg-cream disabled:opacity-40"
           >
             <Plus className="h-4 w-4" />
             New Chat

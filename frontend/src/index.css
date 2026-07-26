@@ -1,0 +1,57 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Manrope", system-ui, "Segoe UI", Roboto, sans-serif;
+
+  /* Ocean Luxury — primary palette */
+  --color-navy: #081c2d;
+  --color-navy-dark: #04101a;
+  --color-ocean: #0f4c81;
+  --color-ocean-dark: #0b3a63;
+  --color-sky: #63c5ea;
+  --color-cream: #f8f6f2;
+  --color-gold: #d4a65a;
+  --color-gold-dark: #b78345;
+
+  /* Nature Luxury — secondary palette */
+  --color-forest: #14342b;
+  --color-sea: #2e8b57;
+  --color-mint: #cfefe5;
+
+  /* Neutral palette */
+  --color-ink: #1a1c20;
+  --color-slate: #4e6e81;
+  --color-mist: #dce7ee;
+  --color-sand: #e7d6b8;
+
+  /* One-off accent to match the approved brand board's 4th feature icon */
+  --color-lavender: #b7a9e0;
+  --color-lavender-dark: #6f5fa8;
+
+  /* Back-compat brand aliases (primary CTA = navy) */
+  --color-brand: #081c2d;
+  --color-brand-dark: #04101a;
+  --color-brand-light: #0f4c81;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}

@@ -1,0 +1,21 @@
+# Secrets — real values live only in the deployment platform's env vars
+.env
+
+# Virtual environment
+venv/
+env/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Local dev database — production uses a real Postgres instance instead
+db.sqlite3
+
+# Locally-uploaded files — production uses Cloudinary instead
+media/
+
+# Django
+staticfiles/
+*.log

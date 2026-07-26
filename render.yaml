@@ -1,0 +1,40 @@
+services:
+  - type: web
+    name: tripsphere-backend
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: "pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate"
+    startCommand: "gunicorn config.wsgi:application"
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: tripsphere-db
+          property: connectionString
+      # Fill these in during setup (or after, in the Render dashboard):
+      - key: ALLOWED_HOSTS
+        sync: false # e.g. tripsphere-backend.onrender.com
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false # e.g. https://your-app.vercel.app
+      - key: FRONTEND_URL
+        sync: false # e.g. https://your-app.vercel.app
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: EMAIL_HOST_USER
+        sync: false
+      - key: EMAIL_HOST_PASSWORD
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+
+databases:
+  - name: tripsphere-db
+    plan: free

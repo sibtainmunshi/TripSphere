@@ -24,8 +24,10 @@ services:
         sync: false # e.g. https://your-app.vercel.app
       - key: GOOGLE_CLIENT_ID
         sync: false
+      - key: RESEND_API_KEY
+        sync: false # preferred — HTTPS API, works on hosts that block outbound SMTP
       - key: EMAIL_HOST_USER
-        sync: false
+        sync: false # fallback only — many free hosts block SMTP ports outbound
       - key: EMAIL_HOST_PASSWORD
         sync: false
       - key: CLOUDINARY_CLOUD_NAME

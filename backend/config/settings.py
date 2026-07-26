@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'cloudinary_storage',
     'cloudinary',
+    'anymail',
     # TripSphere feature apps
     'authentication',
     'workspace',
@@ -95,13 +96,25 @@ GOOGLE_CLIENT_ID = config('GOOGLE_CLIENT_ID', default='')
 # Used to build links (e.g. password reset) that point back at the SPA.
 FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:5173')
 
-# Real SMTP (e.g. a Gmail App Password) once EMAIL_HOST_USER/PASSWORD are set;
-# otherwise falls back to printing the email to the console — a reset email
-# that's honestly not delivered anywhere yet, not one that silently no-ops.
+# Email, in priority order:
+#  1. Resend (HTTPS API) — works everywhere, including hosts like Render's
+#     free tier that block outbound SMTP ports (587/465/25) for spam
+#     prevention. This is the real fix for a 500/timeout hitting
+#     smtp.gmail.com from Render — an HTTPS API call isn't blocked.
+#  2. Gmail SMTP — kept for environments that DON'T block SMTP (e.g. local
+#     dev, a VPS), in case Resend isn't configured.
+#  3. Console backend — prints the email instead of silently no-op'ing.
+RESEND_API_KEY = config('RESEND_API_KEY', default='')
 EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 
-if EMAIL_HOST_USER and EMAIL_HOST_PASSWORD:
+if RESEND_API_KEY:
+    EMAIL_BACKEND = 'anymail.backends.resend.EmailBackend'
+    ANYMAIL = {'RESEND_API_KEY': RESEND_API_KEY}
+    # Resend's shared sandbox sender — works without verifying a custom
+    # domain, which a demo/college project has no reason to set up.
+    DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='TripSphere <onboarding@resend.dev>')
+elif EMAIL_HOST_USER and EMAIL_HOST_PASSWORD:
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
     EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
     EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)

@@ -4,10 +4,25 @@ from .models import Trip, TripMember
 
 
 class TripMemberSerializer(serializers.ModelSerializer):
+    joined = serializers.SerializerMethodField()
+    inviteToken = serializers.SerializerMethodField()
+
     class Meta:
         model = TripMember
-        fields = ('id', 'email', 'name', 'status')
-        read_only_fields = ('id',)
+        fields = ('id', 'email', 'name', 'status', 'joined', 'inviteToken')
+        read_only_fields = ('id', 'status', 'joined', 'inviteToken')
+
+    def get_joined(self, obj):
+        return obj.user_id is not None
+
+    def get_inviteToken(self, obj):
+        # Only the trip owner can see (and therefore share) another member's
+        # invite token — a joined member seeing a pending member's token
+        # could pass it along to someone the owner never actually invited.
+        request = self.context.get('request')
+        if request and request.user.is_authenticated and obj.trip.owner_id == request.user.id:
+            return str(obj.invite_token)
+        return None
 
 
 class TripSerializer(serializers.ModelSerializer):

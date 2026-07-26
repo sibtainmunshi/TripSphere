@@ -35,7 +35,6 @@ export function ManualTripWizard() {
   const [members, setMembers] = useState<TripMember[]>([])
   const [budget, setBudget] = useState('')
   const [notes, setNotes] = useState('')
-  const [inviteLink] = useState(() => `${window.location.origin}/invite/${crypto.randomUUID().slice(0, 8)}`)
 
   const patchDetails = (patch: Partial<TripDetailsValue>) => {
     setDetails((prev) => ({ ...prev, ...patch }))
@@ -61,7 +60,10 @@ export function ManualTripWizard() {
 
   const handleAddMember = (email: string) => {
     if (members.some((member) => member.email.toLowerCase() === email.toLowerCase())) return
-    setMembers((prev) => [...prev, { id: crypto.randomUUID(), email, status: 'invited' }])
+    // joined/inviteToken don't exist yet at this point — the trip (and its
+    // real TripMember rows/tokens) isn't created until the final Review
+    // step, so this is only ever a local, pre-save placeholder.
+    setMembers((prev) => [...prev, { id: crypto.randomUUID(), email, status: 'invited', joined: false, inviteToken: null }])
   }
 
   const handleRemoveMember = (id: string) => {
@@ -92,7 +94,6 @@ export function ManualTripWizard() {
         description: details.description || undefined,
         budget: budget ? Number(budget) : undefined,
         members,
-        inviteLink,
         lat: details.destinationLat,
         lon: details.destinationLon,
       })
@@ -130,12 +131,7 @@ export function ManualTripWizard() {
         <div className="scrollbar-none overflow-y-auto py-6 pr-2 pl-8">
           {step === 1 && <TripDetailsStep value={details} onChange={patchDetails} errors={errors} />}
           {step === 2 && (
-            <AddMembersStep
-              members={members}
-              onAdd={handleAddMember}
-              onRemove={handleRemoveMember}
-              inviteLink={inviteLink}
-            />
+            <AddMembersStep members={members} onAdd={handleAddMember} onRemove={handleRemoveMember} />
           )}
           {step === 3 && (
             <PreferencesStep

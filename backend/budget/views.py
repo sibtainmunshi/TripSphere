@@ -1,3 +1,4 @@
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
 
 from rest_framework.response import Response
@@ -58,6 +59,9 @@ class SettlementViewSet(TripScopedViewSet):
     def list(self, request, *args, **kwargs):
         trip_id = request.query_params.get('trip')
         if trip_id:
-            trip = get_object_or_404(Trip, id=trip_id, owner=request.user)
+            trip = get_object_or_404(
+                Trip.objects.filter(Q(owner=request.user) | Q(members__user=request.user)).distinct(),
+                id=trip_id,
+            )
             recompute_settlements(trip)
         return super().list(request, *args, **kwargs)

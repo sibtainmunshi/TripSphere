@@ -1,9 +1,11 @@
 import { create } from 'zustand'
-import type { Trip } from '@/types'
+import type { Trip, TripMember } from '@/types'
 import {
+  addTripMember,
   createTrip as createTripApi,
   deleteTripApi,
   listTrips,
+  removeTripMember,
   setTripArchived,
   updateTrip as updateTripApi,
   type CreateTripPayload,
@@ -20,6 +22,8 @@ interface TripState {
   setArchived: (id: string, archived: boolean) => Promise<void>
   updateTrip: (id: string, patch: Parameters<typeof updateTripApi>[1]) => Promise<Trip>
   deleteTrip: (id: string) => Promise<void>
+  addMember: (tripId: string, email: string, name: string) => Promise<TripMember>
+  removeMember: (tripId: string, memberId: string) => Promise<void>
   reset: () => void
 }
 
@@ -55,6 +59,23 @@ export const useTripStore = create<TripState>((set, get) => ({
   deleteTrip: async (id) => {
     await deleteTripApi(id)
     set((state) => ({ trips: state.trips.filter((trip) => trip.id !== id) }))
+  },
+  addMember: async (tripId, email, name) => {
+    const member = await addTripMember(tripId, email, name)
+    set((state) => ({
+      trips: state.trips.map((trip) =>
+        trip.id === tripId ? { ...trip, members: [...(trip.members ?? []), member] } : trip,
+      ),
+    }))
+    return member
+  },
+  removeMember: async (tripId, memberId) => {
+    await removeTripMember(tripId, memberId)
+    set((state) => ({
+      trips: state.trips.map((trip) =>
+        trip.id === tripId ? { ...trip, members: (trip.members ?? []).filter((m) => m.id !== memberId) } : trip,
+      ),
+    }))
   },
   reset: () => set({ trips: [], currentTrip: null, isLoading: false, hasLoaded: false }),
 }))

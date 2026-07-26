@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { ArrowRight, Eye, EyeOff, Loader2, Lock, Mail } from 'lucide-react'
 import { TextField } from '@/components/TextField'
 import { useAuthStore } from '@/store/authStore'
@@ -15,6 +15,7 @@ export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const setSession = useAuthStore((state) => state.setSession)
 
   const {
@@ -28,7 +29,10 @@ export function LoginForm() {
     try {
       const { user, access, refresh } = await login(values.email, values.password)
       setSession(user, access, refresh)
-      navigate('/', { replace: true })
+      // A join link (/join/:token) sends people here with ?redirect=... when
+      // they're not logged in yet — send them back to finish joining
+      // instead of dropping them on the dashboard.
+      navigate(searchParams.get('redirect') || '/', { replace: true })
     } catch (err) {
       setFormError(getApiErrorMessage(err, 'Could not log in. Check your email and password.'))
     }
@@ -102,7 +106,10 @@ export function LoginForm() {
 
       <p className="text-center text-sm text-slate">
         Don&rsquo;t have an account?{' '}
-        <Link to="/signup" className="font-semibold text-ocean hover:text-ocean-dark">
+        <Link
+          to={{ pathname: '/signup', search: searchParams.toString() }}
+          className="font-semibold text-ocean hover:text-ocean-dark"
+        >
           Sign up
         </Link>
       </p>

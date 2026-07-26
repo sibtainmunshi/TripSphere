@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Check, Copy, Link2, Mail, UserPlus, X } from 'lucide-react'
+import { Mail, UserPlus, X } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
 import { TextField } from '@/components/TextField'
 import type { TripMember } from '@/types'
@@ -8,13 +8,11 @@ interface AddMembersStepProps {
   members: TripMember[]
   onAdd: (email: string) => void
   onRemove: (id: string) => void
-  inviteLink: string
 }
 
-export function AddMembersStep({ members, onAdd, onRemove, inviteLink }: AddMembersStepProps) {
+export function AddMembersStep({ members, onAdd, onRemove }: AddMembersStepProps) {
   const [email, setEmail] = useState('')
   const [emailError, setEmailError] = useState<string | null>(null)
-  const [copied, setCopied] = useState(false)
 
   const handleAdd = () => {
     const trimmed = email.trim()
@@ -26,12 +24,6 @@ export function AddMembersStep({ members, onAdd, onRemove, inviteLink }: AddMemb
     onAdd(trimmed)
     setEmail('')
     setEmailError(null)
-  }
-
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(inviteLink)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
   }
 
   return (
@@ -97,31 +89,10 @@ export function AddMembersStep({ members, onAdd, onRemove, inviteLink }: AddMemb
         </div>
       )}
 
-      <div className="rounded-xl border border-dashed border-mist p-4">
-        <p className="mb-2 flex items-center gap-1.5 text-sm font-medium text-ink">
-          <Link2 className="h-4 w-4 text-ocean" />
-          Or share an invite link
-        </p>
-        <div className="flex items-center gap-2">
-          <input
-            readOnly
-            value={inviteLink}
-            className="flex-1 rounded-lg border border-mist bg-cream px-3 py-2 text-xs text-slate"
-          />
-          <button
-            type="button"
-            onClick={handleCopy}
-            className="flex shrink-0 items-center gap-1.5 rounded-lg border border-mist px-3 py-2 text-xs font-medium text-ink transition-colors hover:bg-cream"
-          >
-            {copied ? <Check className="h-3.5 w-3.5 text-sea" /> : <Copy className="h-3.5 w-3.5" />}
-            {copied ? 'Copied' : 'Copy'}
-          </button>
-        </div>
-        <p className="mt-2 text-xs text-slate">
-          Real email delivery lands with backend integration — for now this link is saved with your
-          trip so you can share it manually.
-        </p>
-      </div>
+      <p className="text-xs text-slate">
+        Each person gets their own real, shareable invite link once the trip is created — you&rsquo;ll find them in
+        Trip Settings.
+      </p>
     </div>
   )
 }

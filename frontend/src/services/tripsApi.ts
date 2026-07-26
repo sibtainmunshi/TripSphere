@@ -15,7 +15,7 @@ function normalizeTrip(raw: RawTrip): Trip {
 }
 
 export type CreateTripPayload = Omit<Trip, 'id' | 'createdAt' | 'archived'> & {
-  members?: Omit<TripMember, 'id'>[]
+  members?: Omit<TripMember, 'id' | 'joined' | 'inviteToken'>[]
 }
 
 export async function listTrips(): Promise<Trip[]> {
@@ -43,4 +43,32 @@ export async function updateTrip(
 
 export async function deleteTripApi(id: string): Promise<void> {
   await api.delete(`/trips/${id}/`)
+}
+
+export async function addTripMember(tripId: string, email: string, name: string): Promise<TripMember> {
+  const { data } = await api.post<TripMember>(`/trips/${tripId}/add-member/`, { email, name })
+  return data
+}
+
+export async function removeTripMember(tripId: string, memberId: string): Promise<void> {
+  await api.post(`/trips/${tripId}/remove-member/`, { memberId })
+}
+
+export interface JoinPreview {
+  tripName: string
+  destination: string
+  startDate: string
+  endDate: string
+  invitedName: string
+  alreadyJoined: boolean
+}
+
+export async function getJoinPreview(token: string): Promise<JoinPreview> {
+  const { data } = await api.get<JoinPreview>(`/join/${token}/`)
+  return data
+}
+
+export async function acceptJoin(token: string): Promise<Trip> {
+  const { data } = await api.post<RawTrip>(`/join/${token}/accept/`)
+  return normalizeTrip(data)
 }

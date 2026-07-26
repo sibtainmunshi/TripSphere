@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
 import { googleLogin } from '@/services/authApi'
 import { GoogleIcon } from '@/components/GoogleIcon'
@@ -16,6 +16,7 @@ export function ContinueWithGoogleButton() {
   const containerRef = useRef<HTMLDivElement>(null)
   const setSession = useAuthStore((state) => state.setSession)
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [scriptFailed, setScriptFailed] = useState(false)
 
   useEffect(() => {
@@ -27,7 +28,10 @@ export function ContinueWithGoogleButton() {
       try {
         const { user, access, refresh } = await googleLogin(response.credential)
         setSession(user, access, refresh)
-        navigate('/', { replace: true })
+        // A join link (/join/:token) sends people here with ?redirect=...
+        // when they're not logged in yet — send them back to finish
+        // joining instead of dropping them on the dashboard.
+        navigate(searchParams.get('redirect') || '/', { replace: true })
       } catch {
         setScriptFailed(true)
       }
@@ -60,7 +64,7 @@ export function ContinueWithGoogleButton() {
     return () => {
       cancelled = true
     }
-  }, [setSession, navigate])
+  }, [setSession, navigate, searchParams])
 
   if (!GOOGLE_CLIENT_ID || scriptFailed) {
     return (

@@ -24,6 +24,7 @@ import { REAL_MODULE_PATHS, TRIP_MODULES } from '@/features/trip/tripModules'
 import { Bookings } from '@/features/trip/travelHub/Bookings'
 import { TravelDocumentsPage } from '@/features/trip/travelHub/TravelDocumentsPage'
 import { ExpensesPage } from '@/features/trip/budgetPlanner/ExpensesPage'
+import { JoinTrip } from '@/pages/JoinTrip'
 
 function AppShell() {
   const [showSplash, setShowSplash] = useState(true)
@@ -87,6 +88,11 @@ function AppShell() {
           <Route path="forgot-password" element={<ForgotPassword />} />
           <Route path="reset-password" element={<ResetPassword />} />
         </Route>
+        {/* Public regardless of auth state — not nested under AppLayout
+            (which redirects straight to /login) or AuthLayout (the actual
+            login/signup forms), since seeing what you're invited to
+            shouldn't require signing in first. */}
+        <Route path="join/:token" element={<JoinTrip />} />
       </Routes>
     </>
   )

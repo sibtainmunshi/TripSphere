@@ -4,6 +4,7 @@ import { Archive, ArchiveRestore, IndianRupee, Loader2, Trash2 } from 'lucide-re
 import { TextField } from '@/components/TextField'
 import { useTripStore } from '@/store/tripStore'
 import { getTripStatus } from '@/utils/tripStatus'
+import { MembersSection } from './MembersSection'
 
 export function TripSettings() {
   const { tripId } = useParams<{ tripId: string }>()
@@ -135,6 +136,8 @@ export function TripSettings() {
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save Changes'}
         </button>
       </div>
+
+      <MembersSection trip={trip} />
 
       <div className="flex flex-col gap-3 rounded-2xl border border-mist p-5">
         <p className="text-sm font-semibold text-ink">Danger Zone</p>

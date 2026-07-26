@@ -38,16 +38,24 @@ class Trip(models.Model):
         automatically today (TripSerializer.create() only makes rows for
         invited members), so this lazily creates it on first use — covers
         trips created before this existed too, no data migration needed."""
-        member, _ = self.members.get_or_create(
+        member, created = self.members.get_or_create(
             email=self.owner.email,
-            defaults={'name': self.owner.name or self.owner.email, 'status': 'owner'},
+            defaults={'name': self.owner.name or self.owner.email, 'status': 'owner', 'user': self.owner},
         )
+        if not created and member.user_id is None:
+            member.user = self.owner
+            member.save(update_fields=['user'])
         return member
 
 
 class TripMember(models.Model):
     STATUS_CHOICES = (
+        # Has an email on file but hasn't opened the invite link and signed
+        # in yet — no real access until they do.
         ('invited', 'Invited'),
+        # Opened the invite link, signed in, and is now linked to a real
+        # user account — has real access to this trip.
+        ('joined', 'Joined'),
         ('owner', 'Owner'),
     )
 
@@ -56,6 +64,15 @@ class TripMember(models.Model):
     email = models.EmailField()
     name = models.CharField(max_length=150, blank=True)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='invited')
+    # Set once this member has actually joined (or immediately, for the
+    # owner) — this is what real trip access is granted against, never the
+    # email alone, since anyone could type in anyone else's email address.
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True, related_name='trip_memberships',
+    )
+    # The real, unguessable invite link is /join/<invite_token> — scoped to
+    # this exact person's invite, not a single link shared by the whole trip.
+    invite_token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
 
     def __str__(self):
         return self.email

@@ -5,15 +5,19 @@ from .models import RestaurantReservation, StayBooking, TransportBooking, Travel
 
 
 class TripOwnedSerializer(serializers.ModelSerializer):
-    """Shared 'trip must belong to the requesting user' validation — every
-    Travel Hub model is scoped to a single trip, and none of these records
-    should be creatable against someone else's trip."""
+    """Shared 'must actually have access to this trip' validation — every
+    Travel Hub (and Budget) model is scoped to a single trip, and none of
+    these records should be creatable against a trip the requester doesn't
+    own or hasn't joined. Reused as-is by the budget app."""
 
     trip = serializers.PrimaryKeyRelatedField(queryset=Trip.objects.all())
 
     def validate_trip(self, trip):
         request = self.context.get('request')
-        if request and trip.owner_id != request.user.id:
+        if not request:
+            return trip
+        has_access = trip.owner_id == request.user.id or trip.members.filter(user=request.user).exists()
+        if not has_access:
             raise serializers.ValidationError("You don't have access to this trip.")
         return trip
 

@@ -1,3 +1,5 @@
+import logging
+
 from django.conf import settings
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import default_token_generator
@@ -5,6 +7,8 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.mail import send_mail
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
+
+logger = logging.getLogger(__name__)
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token as google_id_token
 from rest_framework import generics, permissions, status
@@ -123,18 +127,26 @@ class PasswordResetRequestView(APIView):
             uid = urlsafe_base64_encode(force_bytes(user.pk))
             token = default_token_generator.make_token(user)
             reset_link = f'{settings.FRONTEND_URL}/reset-password?uid={uid}&token={token}'
-            send_mail(
-                subject='Reset your TripSphere password',
-                message=(
-                    f'Hi {user.name or user.email},\n\n'
-                    'Use the link below to reset your TripSphere password. '
-                    "This link is single-use and expires soon.\n\n"
-                    f'{reset_link}\n\n'
-                    "If you didn't request this, you can safely ignore this email."
-                ),
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[user.email],
-            )
+            try:
+                send_mail(
+                    subject='Reset your TripSphere password',
+                    message=(
+                        f'Hi {user.name or user.email},\n\n'
+                        'Use the link below to reset your TripSphere password. '
+                        "This link is single-use and expires soon.\n\n"
+                        f'{reset_link}\n\n'
+                        "If you didn't request this, you can safely ignore this email."
+                    ),
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[user.email],
+                )
+            except Exception:
+                # A real delivery failure (e.g. the email provider rejecting
+                # an unverified recipient/domain) should never surface as a
+                # 500 to the user — log it server-side for a developer to
+                # notice, but the response stays identical either way so
+                # this endpoint still never reveals whether the send worked.
+                logger.exception('Password reset email failed to send for user %s', user.id)
 
         return Response({'detail': 'If an account exists for this email, a reset link is on its way.'})
 

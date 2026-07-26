@@ -13,11 +13,16 @@ logger = logging.getLogger(__name__)
 
 OVERPASS_URL = 'https://overpass-api.de/api/interpreter'
 
-# An alias Google keeps pointed at their current recommended flash model,
-# rather than a fixed version — pinned model names get sunset for new
-# projects over time (gemini-2.5-flash already returned a 404 "no longer
-# available to new users" on a freshly created project during testing).
-GEMINI_MODEL = 'gemini-flash-latest'
+# An alias Google keeps pointed at their current recommended lite flash
+# model, rather than a fixed version — pinned model names get sunset for
+# new projects over time (gemini-2.5-flash already returned a 404 "no
+# longer available to new users" on a freshly created project during
+# testing). The lite variant also has its own separate free-tier quota
+# from the full flash model, uses no "thinking" tokens by default (cheaper
+# once billing is on), and was verified in testing to still extract the
+# 4 planner fields correctly — including updating a field the user changed
+# their mind about mid-conversation.
+GEMINI_MODEL = 'gemini-flash-lite-latest'
 GEMINI_URL = f'https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent'
 
 # Keeps the model's job scoped to a single, honest task: hold a natural

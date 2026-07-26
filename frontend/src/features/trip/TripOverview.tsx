@@ -18,8 +18,10 @@ import { listDocuments } from '@/services/travelApi'
 import { getBudget, listExpenses } from '@/services/budgetApi'
 import { useChatMessages } from '@/hooks/useChatMessages'
 import { sendMessage } from '@/services/chatApi'
+import { listMedia } from '@/services/galleryApi'
 import type { TravelDocument } from '@/types/travel'
 import type { Budget, Expense } from '@/types/budget'
+import type { MediaItem } from '@/types/gallery'
 import { useBookingEvents, formatEventTime } from './travelHub/useBookingEvents'
 import { TripCountdown } from './TripCountdown'
 
@@ -32,6 +34,7 @@ export function TripOverview() {
   const [documents, setDocuments] = useState<TravelDocument[] | null>(null)
   const [budget, setBudget] = useState<Budget | null>(null)
   const [expenses, setExpenses] = useState<Expense[]>([])
+  const [media, setMedia] = useState<MediaItem[] | null>(null)
   const { messages: chatMessages } = useChatMessages(tripId ?? '')
   const [chatInput, setChatInput] = useState('')
   const [sendingChat, setSendingChat] = useState(false)
@@ -45,6 +48,9 @@ export function TripOverview() {
     listExpenses(tripId)
       .then(setExpenses)
       .catch(() => setExpenses([]))
+    listMedia(tripId)
+      .then(setMedia)
+      .catch(() => setMedia([]))
   }, [tripId])
 
   if (!trip || !tripId) return null
@@ -52,6 +58,7 @@ export function TripOverview() {
   const hasBookings = events !== null && events.length > 0
   const hasDocuments = (documents?.length ?? 0) > 0
   const hasBudget = Boolean(budget) || Boolean(trip.budget)
+  const hasPhotos = (media?.length ?? 0) > 0
   const totalSpent = expenses.reduce((sum, expense) => sum + Number(expense.amount), 0)
 
   const checkpoints = [
@@ -59,6 +66,7 @@ export function TripOverview() {
     { label: 'Budget Set', done: hasBudget },
     { label: 'Bookings Added', done: hasBookings },
     { label: 'Documents Added', done: hasDocuments },
+    { label: 'Photos Added', done: hasPhotos },
   ]
   const progressPercent = Math.round((checkpoints.filter((c) => c.done).length / checkpoints.length) * 100)
 
@@ -237,9 +245,31 @@ export function TripOverview() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-dashed border-mist p-5 text-center text-sm text-slate">
-            <Images className="mx-auto mb-2 h-5 w-5" />
-            Photos &amp; memories will show up here once Gallery is built (Milestone 6).
+          <div className="rounded-2xl border border-mist p-5">
+            <div className="mb-3 flex items-center justify-between">
+              <p className="flex items-center gap-1.5 text-sm font-semibold text-ink">
+                <Images className="h-4 w-4 text-ocean" />
+                Memories
+              </p>
+              <Link to={`/trips/${tripId}/gallery`} className="text-xs font-medium text-ocean hover:underline">
+                View gallery →
+              </Link>
+            </div>
+            {!media || media.length === 0 ? (
+              <p className="text-sm text-slate">No photos yet — add the first one.</p>
+            ) : (
+              <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
+                {media.slice(0, 6).map((item) => (
+                  <div key={item.id} className="aspect-square overflow-hidden rounded-lg bg-cream">
+                    {item.mediaType === 'video' ? (
+                      <video src={item.file} className="h-full w-full object-cover" />
+                    ) : (
+                      <img src={item.file} alt="" className="h-full w-full object-cover" />
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 

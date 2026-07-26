@@ -10,6 +10,7 @@ urlpatterns = [
     path('', include('travel.urls')),
     path('', include('budget.urls')),
     path('', include('chat.urls')),
+    path('', include('gallery.urls')),
     path('attractions/', NearbyAttractionsView.as_view(), name='nearby-attractions'),
     path('chat-planner/', ChatPlannerView.as_view(), name='chat-planner'),
 ]

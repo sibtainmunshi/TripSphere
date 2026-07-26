@@ -25,6 +25,7 @@ import { Bookings } from '@/features/trip/travelHub/Bookings'
 import { TravelDocumentsPage } from '@/features/trip/travelHub/TravelDocumentsPage'
 import { ExpensesPage } from '@/features/trip/budgetPlanner/ExpensesPage'
 import { ChatPage } from '@/features/trip/ChatPage'
+import { GalleryPage } from '@/features/trip/GalleryPage'
 import { JoinTrip } from '@/pages/JoinTrip'
 
 function AppShell() {
@@ -64,6 +65,7 @@ function AppShell() {
             <Route path="chat" element={<ChatPage />} />
             <Route path="bookings" element={<Bookings />} />
             <Route path="documents" element={<TravelDocumentsPage />} />
+            <Route path="gallery" element={<GalleryPage />} />
             <Route path="settings" element={<TripSettings />} />
             {TRIP_MODULES.filter((module) => module.path && !REAL_MODULE_PATHS.has(module.path)).map((module) => (
               <Route

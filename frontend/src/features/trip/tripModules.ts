@@ -55,17 +55,10 @@ export const TRIP_MODULES: TripModule[] = [
     description: "Shared notes for anything that doesn't fit elsewhere.",
     milestone: 'Milestone 4',
   },
-  {
-    path: 'gallery',
-    label: 'Gallery',
-    icon: Images,
-    end: false,
-    description: 'Shared photos and videos from everyone on the trip, organized into day albums.',
-    milestone: 'Milestone 6',
-  },
+  { path: 'gallery', label: 'Gallery', icon: Images, end: false },
   { path: 'settings', label: 'Settings', icon: SettingsIcon, end: false },
 ]
 
 // Modules with real, working pages — everything else in TRIP_MODULES falls
 // back to an honest ModulePlaceholder in the route table.
-export const REAL_MODULE_PATHS = new Set(['bookings', 'documents', 'settings', 'expenses', 'chat'])
+export const REAL_MODULE_PATHS = new Set(['bookings', 'documents', 'settings', 'expenses', 'chat', 'gallery'])

@@ -42,10 +42,10 @@ export function Sidebar() {
 
   return (
     <aside className="flex h-screen w-64 shrink-0 flex-col border-r border-mist bg-white">
-      <div className="flex items-center gap-2.5 px-6 py-6">
+      <NavLink to="/" className="flex items-center gap-2.5 px-6 py-6">
         <img src={logo} alt="" className="h-8 w-8" />
         <span className="text-lg font-bold text-navy">TripSphere</span>
-      </div>
+      </NavLink>
 
       <nav className="flex flex-1 flex-col gap-1 px-3">
         {NAV_ITEMS_TOP.map((item) => (

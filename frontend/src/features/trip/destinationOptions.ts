@@ -1,5 +1,5 @@
 import { getDestinationImage } from './destinationImagery'
-import { fetchDestinationSummary } from '@/services/wikipedia'
+import { fetchDestinationSummary, searchWikipediaPlaces } from '@/services/wikipedia'
 import { searchPlaces } from '@/services/geocoding'
 
 export interface DestinationOption {
@@ -32,14 +32,14 @@ export function getDestinationForCustomName(rawName: string): DestinationOption 
   }
 }
 
-// Fills in whatever real data is still missing (photo and/or coordinates)
-// via Wikipedia first, then OpenStreetMap geocoding as a fallback — used for
-// both custom-typed destinations (which start with neither) and preset
-// vibes that don't have hand-picked local photography (Goa/Dubai). Never
-// overwrites real data that's already there. If NEITHER source can confirm
-// this is a real place, lat/lon are left unset — the caller (AiTripChat)
-// uses that as the honest "this isn't a real destination" signal, rather
-// than pretending any typed text is a valid pick.
+// Fills in whatever real data is still missing (photo and/or coordinates),
+// trying progressively fuzzier real sources — used for both custom-typed
+// destinations (which start with neither) and preset vibes that don't have
+// hand-picked local photography (Goa/Dubai). Never overwrites real data
+// that's already there. If NO source can confirm this is a real place,
+// lat/lon are left unset — the caller (AiTripChat) uses that as the honest
+// "this isn't a real destination" signal, rather than pretending any typed
+// text is a valid pick.
 export async function enrichWithRealData(option: DestinationOption): Promise<DestinationOption> {
   if (option.image && option.lat != null && option.lon != null) return option
 
@@ -48,20 +48,40 @@ export async function enrichWithRealData(option: DestinationOption): Promise<Des
   let lon = option.lon
   let name = option.name
 
+  // 1. Exact-title lookup — fast path for well-formed names ("Goa",
+  // "Manali") that match a Wikipedia article title directly.
   try {
     const summary = await fetchDestinationSummary(option.name)
     image = image ?? summary.image
     lat = lat ?? summary.lat
     lon = lon ?? summary.lon
   } catch {
-    // Wikipedia lookup failed — geocoding fallback below still gets a try.
+    // Falls through to the search below.
   }
 
+  // 2. Wikipedia's full-text search — handles casual/natural phrasing the
+  // exact-title lookup above can't ("the valley of flowers" → "Valley of
+  // Flowers National Park"). Pulled from the same matched article as its
+  // coordinates, so the photo is never mismatched to a different place.
   if (lat == null || lon == null) {
     try {
-      // searchPlaces() only ever returns genuine places (cities, parks,
-      // natural features, etc.) — a business/POI match, even one that
-      // happens to share the query text, never comes back from it at all.
+      const [match] = await searchWikipediaPlaces(option.name)
+      if (match) {
+        image = image ?? match.image
+        lat = match.lat
+        lon = match.lon
+        name = match.title
+      }
+    } catch {
+      // Falls through to the geocoding fallback below.
+    }
+  }
+
+  // 3. OpenStreetMap geocoding — last resort for small/obscure places that
+  // don't have their own Wikipedia article at all (no photo available this
+  // way, only coordinates).
+  if (lat == null || lon == null) {
+    try {
       const [match] = await searchPlaces(option.name)
       if (match) {
         lat = match.lat
@@ -72,8 +92,8 @@ export async function enrichWithRealData(option: DestinationOption): Promise<Des
         name = match.label
       }
     } catch {
-      // Both real sources failed — lat/lon stay unset, which is the honest
-      // outcome: this genuinely couldn't be confirmed as a real place.
+      // All three real sources failed — lat/lon stay unset, which is the
+      // honest outcome: this genuinely couldn't be confirmed as a real place.
     }
   }
 

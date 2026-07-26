@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Loader2, LocateFixed, MapPin } from 'lucide-react'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
-import { getCurrentPosition, reverseGeocode, searchPlaces, type PlaceResult } from '@/services/geocoding'
+import { getCurrentPosition, reverseGeocode, type PlaceResult } from '@/services/geocoding'
+import { searchDestinations } from '@/services/destinationSearch'
 
 const QUICK_PICKS = ['Goa', 'Manali', 'Kerala', 'Ladakh', 'Dubai']
 
@@ -43,7 +44,7 @@ export function DestinationSearchField({ value, onChange, error }: DestinationSe
     }
     const controller = new AbortController()
     setLoading(true)
-    searchPlaces(debouncedValue, controller.signal)
+    searchDestinations(debouncedValue, controller.signal)
       .then((places) => setResults(places))
       .catch((err) => {
         if (err instanceof Error && err.name !== 'AbortError') setResults([])

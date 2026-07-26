@@ -1,5 +1,8 @@
+import { useEffect, useMemo, useState } from 'react'
 import {
   Backpack,
+  ChevronLeft,
+  ChevronRight,
   Clock,
   CloudSun,
   Palette,
@@ -15,6 +18,7 @@ import {
 import type { TripPlanData } from './tripPlanMock'
 import { useWeather } from '@/hooks/useWeather'
 import { getWeatherIcon } from '@/services/weather'
+import { useDestinationGallery } from '@/hooks/useDestinationGallery'
 import { NearbyAttractions } from './NearbyAttractions'
 
 interface TripPlanPreviewProps {
@@ -63,6 +67,24 @@ export function TripPlanPreview({ plan, onRegenerate, onContinue, creating, crea
   const { data: weather } = useWeather(plan.lat, plan.lon)
   const WeatherIcon = weather ? getWeatherIcon(weather.code) : CloudSun
 
+  const gallery = useDestinationGallery(plan.destination)
+  // The plan's own image first (if it has one), then every other genuine
+  // photo Wikipedia has for this place — never a fabricated image just to
+  // pad out the count.
+  const images = useMemo(() => {
+    const galleryUrls = gallery.map((item) => item.url)
+    if (!plan.image) return galleryUrls
+    return [plan.image, ...galleryUrls.filter((url) => url !== plan.image)]
+  }, [plan.image, gallery])
+
+  const [imageIndex, setImageIndex] = useState(0)
+  useEffect(() => {
+    setImageIndex(0)
+  }, [plan.destination])
+
+  const activeImage = images[imageIndex] ?? null
+  const hasMultipleImages = images.length > 1
+
   return (
     <div className="flex h-full flex-col overflow-y-auto p-6">
       <div className="mb-4 flex items-center justify-between">
@@ -77,8 +99,8 @@ export function TripPlanPreview({ plan, onRegenerate, onContinue, creating, crea
       </div>
 
       <div className="relative h-44 overflow-hidden rounded-2xl">
-        {plan.image ? (
-          <img src={plan.image} alt={plan.destination} className="absolute inset-0 h-full w-full object-cover" />
+        {activeImage ? (
+          <img src={activeImage} alt={plan.destination} className="absolute inset-0 h-full w-full object-cover" />
         ) : (
           <div className={`absolute inset-0 bg-gradient-to-br ${plan.gradient}`} />
         )}
@@ -87,6 +109,27 @@ export function TripPlanPreview({ plan, onRegenerate, onContinue, creating, crea
         <span className="absolute top-3 left-3 rounded-full bg-lavender px-2.5 py-1 text-xs font-semibold text-white">
           {plan.tag}
         </span>
+
+        {hasMultipleImages && (
+          <>
+            <button
+              type="button"
+              aria-label="Previous photo"
+              onClick={() => setImageIndex((i) => (i - 1 + images.length) % images.length)}
+              className="absolute top-1/2 left-2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white transition-colors hover:bg-black/60"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              aria-label="Next photo"
+              onClick={() => setImageIndex((i) => (i + 1) % images.length)}
+              className="absolute top-1/2 right-2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white transition-colors hover:bg-black/60"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </>
+        )}
 
         <div className="absolute top-3 right-3 rounded-xl bg-white/90 px-3 py-2 text-right">
           <p className="flex items-center justify-end gap-1 text-[11px] text-slate">
@@ -115,14 +158,19 @@ export function TripPlanPreview({ plan, onRegenerate, onContinue, creating, crea
         </div>
       </div>
 
-      <div className="mt-1.5 flex justify-center gap-1.5 py-2">
-        {[0, 1, 2, 3].map((dot) => (
-          <span
-            key={dot}
-            className={`h-1.5 rounded-full transition-all ${dot === 0 ? 'w-4 bg-ocean' : 'w-1.5 bg-mist'}`}
-          />
-        ))}
-      </div>
+      {hasMultipleImages && (
+        <div className="mt-1.5 flex justify-center gap-1.5 py-2">
+          {images.map((_, i) => (
+            <button
+              key={i}
+              type="button"
+              aria-label={`Photo ${i + 1} of ${images.length}`}
+              onClick={() => setImageIndex(i)}
+              className={`h-1.5 rounded-full transition-all ${i === imageIndex ? 'w-4 bg-ocean' : 'w-1.5 bg-mist hover:bg-slate/40'}`}
+            />
+          ))}
+        </div>
+      )}
 
       <p className="text-sm text-slate">{plan.description}</p>
 

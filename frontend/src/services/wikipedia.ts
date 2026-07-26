@@ -39,3 +39,51 @@ export async function fetchDestinationSummary(name: string, signal?: AbortSignal
     lon: data.coordinates?.lon,
   }
 }
+
+const SEARCH_URL = 'https://en.wikipedia.org/w/api.php'
+
+export interface WikiPlaceMatch {
+  title: string
+  lat: number
+  lon: number
+  image: string | null
+}
+
+interface SearchResponse {
+  query?: { search?: { title: string }[] }
+}
+
+// Wikipedia's own full-text search understands natural, casual phrasing far
+// better than a geocoder's address-matching engine — e.g. "the valley of
+// flowers" correctly finds "Valley of Flowers National Park" as the top
+// hit, where Nominatim's text search returns nothing useful for that exact
+// phrasing (only the fully official name works there). Candidate titles are
+// confirmed as genuine geographic places by requiring real coordinates from
+// the summary endpoint — this is what filters out non-place results (e.g.
+// "Valley of Flowers (film)" has no coordinates, so it's dropped).
+export async function searchWikipediaPlaces(query: string, signal?: AbortSignal): Promise<WikiPlaceMatch[]> {
+  const trimmed = query.trim()
+  if (trimmed.length < 2) return []
+
+  const searchUrl = `${SEARCH_URL}?action=query&list=search&srsearch=${encodeURIComponent(trimmed)}&srlimit=6&format=json&origin=*`
+  const response = await fetch(searchUrl, { signal })
+  if (!response.ok) return []
+
+  const data: SearchResponse = await response.json()
+  const titles = (data.query?.search ?? []).map((result) => result.title)
+  if (titles.length === 0) return []
+
+  const candidates = await Promise.all(
+    titles.map(async (title): Promise<WikiPlaceMatch | null> => {
+      try {
+        const summary = await fetchDestinationSummary(title, signal)
+        if (summary.lat == null || summary.lon == null) return null
+        return { title, lat: summary.lat, lon: summary.lon, image: summary.image }
+      } catch {
+        return null
+      }
+    }),
+  )
+
+  return candidates.filter((candidate): candidate is WikiPlaceMatch => candidate !== null)
+}

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Calendar, Camera, Clock, Compass, Sparkles, Users, Wallet } from 'lucide-react'
+import { Calendar, ChevronLeft, ChevronRight, Clock, Compass, Sparkles, Users, Wallet } from 'lucide-react'
 import { useDestinationImage } from '@/hooks/useDestinationImage'
 import { useDestinationGallery } from '@/hooks/useDestinationGallery'
 
@@ -82,16 +82,40 @@ export function TripPreviewCard({
         </span>
 
         {hasMultipleImages && (
-          <div className="absolute top-3 right-3">
+          <>
+            {/* Real photos to browse before confirming the trip — not just a
+                single guessed image. Dots + arrows so it reads as an
+                explorable gallery, not an incidental "change image" toggle. */}
+            <div className="absolute top-3 left-1/2 flex -translate-x-1/2 gap-1">
+              {images.map((_, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  aria-label={`Photo ${i + 1} of ${images.length}`}
+                  onClick={() => setImageIndex(i)}
+                  className={`h-1.5 rounded-full transition-all ${
+                    i === imageIndex ? 'w-5 bg-white' : 'w-1.5 bg-white/50 hover:bg-white/70'
+                  }`}
+                />
+              ))}
+            </div>
             <button
               type="button"
-              onClick={() => setImageIndex((i) => (i + 1) % images.length)}
-              className="flex items-center gap-1.5 rounded-full bg-black/50 px-3 py-1.5 text-xs font-medium text-white hover:bg-black/60"
+              aria-label="Previous photo"
+              onClick={() => setImageIndex((i) => (i - 1 + images.length) % images.length)}
+              className="absolute top-1/2 left-2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white transition-colors hover:bg-black/60"
             >
-              <Camera className="h-3.5 w-3.5" />
-              Change Image ({imageIndex + 1}/{images.length})
+              <ChevronLeft className="h-4 w-4" />
             </button>
-          </div>
+            <button
+              type="button"
+              aria-label="Next photo"
+              onClick={() => setImageIndex((i) => (i + 1) % images.length)}
+              className="absolute top-1/2 right-2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white transition-colors hover:bg-black/60"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </>
         )}
 
         <div className="absolute right-3 bottom-3 left-3">

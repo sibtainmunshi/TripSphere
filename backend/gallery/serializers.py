@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+from chat.services import post_system_message
 from notifications.services import notify_trip_members
 from travel.serializers import TripOwnedSerializer
 
@@ -53,5 +54,7 @@ class MediaSerializer(TripOwnedSerializer):
             caption=validated_data.get('caption', ''),
         )
         uploader_name = uploader.name or uploader.email
-        notify_trip_members(trip, uploader.id, 'photo_uploaded', f'{uploader_name} added a {media_type}')
+        message = f'{uploader_name} added a {media_type}'
+        notify_trip_members(trip, uploader.id, 'photo_uploaded', message)
+        post_system_message(trip, message)
         return media

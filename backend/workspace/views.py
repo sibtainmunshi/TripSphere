@@ -7,6 +7,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from chat.services import post_system_message
 from notifications.services import notify_trip_members
 
 from .models import Trip, TripMember
@@ -114,5 +115,7 @@ class JoinTripView(APIView):
         member.status = 'joined'
         member.save(update_fields=['user', 'status'])
         member_name = member.name or member.email
-        notify_trip_members(member.trip, member.id, 'member_joined', f'{member_name} joined the trip')
+        message = f'{member_name} joined the trip'
+        notify_trip_members(member.trip, member.id, 'member_joined', message)
+        post_system_message(member.trip, message)
         return Response(TripSerializer(member.trip, context={'request': request}).data)

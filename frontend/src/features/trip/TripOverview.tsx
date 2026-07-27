@@ -286,6 +286,13 @@ export function TripOverview() {
             ) : (
               <div className="flex flex-col gap-2.5">
                 {recentChat.map((message) => {
+                  if (message.isSystem) {
+                    return (
+                      <p key={message.id} className="text-center text-xs text-slate">
+                        {message.text}
+                      </p>
+                    )
+                  }
                   const isMine = message.senderId === myMemberId
                   return (
                     <div key={message.id} className="text-sm">

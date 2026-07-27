@@ -56,6 +56,13 @@ export function ChatPage() {
         ) : (
           <div className="flex flex-col gap-3">
             {messages.map((message) => {
+              if (message.isSystem) {
+                return (
+                  <p key={message.id} className="my-1 text-center text-xs text-slate">
+                    {message.text} · {formatTime(message.createdAt)}
+                  </p>
+                )
+              }
               const isMine = message.senderId === myMemberId
               return (
                 <div key={message.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>

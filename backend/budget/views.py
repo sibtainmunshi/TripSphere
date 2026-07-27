@@ -3,6 +3,7 @@ from django.shortcuts import get_object_or_404
 
 from rest_framework.response import Response
 
+from chat.services import post_system_message
 from notifications.services import notify_member, notify_trip_members
 from travel.views import TripScopedViewSet
 from workspace.models import Trip
@@ -38,10 +39,9 @@ class BudgetViewSet(TripScopedViewSet):
             budget = Budget.objects.get(id=response.data['id'])
 
         actor = _resolve_actor_member(trip, request)
-        notify_trip_members(
-            trip, actor.id, 'budget_updated',
-            f'{actor.name or actor.email} set the budget to ₹{budget.total_budget:,.0f}',
-        )
+        message = f'{actor.name or actor.email} set the budget to ₹{budget.total_budget:,.0f}'
+        notify_trip_members(trip, actor.id, 'budget_updated', message)
+        post_system_message(trip, message)
         return response
 
 
@@ -54,10 +54,9 @@ class ExpenseViewSet(TripScopedViewSet):
         recompute_settlements(expense.trip)
         payer_name = expense.paid_by.name or expense.paid_by.email
         label = expense.description or expense.category
-        notify_trip_members(
-            expense.trip, expense.paid_by_id, 'expense_added',
-            f'{payer_name} added an expense: ₹{expense.amount:,.0f} for {label}',
-        )
+        message = f'{payer_name} added an expense: ₹{expense.amount:,.0f} for {label}'
+        notify_trip_members(expense.trip, expense.paid_by_id, 'expense_added', message)
+        post_system_message(expense.trip, message)
 
     def perform_update(self, serializer):
         expense = serializer.save()
@@ -100,7 +99,6 @@ class SettlementViewSet(TripScopedViewSet):
                 actor, recipient = settlement.from_member, settlement.to_member
             else:
                 actor, recipient = settlement.to_member, settlement.from_member
-            notify_member(
-                settlement.trip, recipient, 'settlement_paid',
-                f'{actor.name or actor.email} marked ₹{settlement.amount:,.0f} as paid',
-            )
+            message = f'{actor.name or actor.email} marked ₹{settlement.amount:,.0f} as paid'
+            notify_member(settlement.trip, recipient, 'settlement_paid', message)
+            post_system_message(settlement.trip, message)

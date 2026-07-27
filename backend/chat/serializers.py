@@ -6,16 +6,22 @@ from .models import Message
 
 
 class MessageSerializer(TripOwnedSerializer):
-    senderId = serializers.UUIDField(source='sender.id', read_only=True)
+    senderId = serializers.SerializerMethodField()
     senderName = serializers.SerializerMethodField()
+    isSystem = serializers.BooleanField(source='is_system', read_only=True)
     createdAt = serializers.DateTimeField(source='created_at', read_only=True)
 
     class Meta:
         model = Message
-        fields = ('id', 'trip', 'senderId', 'senderName', 'text', 'createdAt')
-        read_only_fields = ('id', 'senderId', 'senderName', 'createdAt')
+        fields = ('id', 'trip', 'senderId', 'senderName', 'isSystem', 'text', 'createdAt')
+        read_only_fields = ('id', 'senderId', 'senderName', 'isSystem', 'createdAt')
+
+    def get_senderId(self, obj):
+        return obj.sender_id
 
     def get_senderName(self, obj):
+        if obj.sender_id is None:
+            return None
         return obj.sender.name or obj.sender.email
 
     def create(self, validated_data):

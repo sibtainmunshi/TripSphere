@@ -6,6 +6,7 @@ import { useAuthStore } from '@/store/authStore'
 import { useTripStore } from '@/store/tripStore'
 import { listMedia, uploadMedia, setFavorite, deleteMedia } from '@/services/galleryApi'
 import type { MediaItem } from '@/types/gallery'
+import { groupByTripDay } from './tripDay'
 
 type GalleryFilter = 'all' | 'photo' | 'video' | 'favorites' | 'mine'
 
@@ -16,33 +17,6 @@ const FILTERS: { value: GalleryFilter; label: string }[] = [
   { value: 'video', label: 'Videos' },
   { value: 'favorites', label: 'Favorites' },
 ]
-
-interface DayGroup {
-  key: string
-  label: string
-  items: MediaItem[]
-}
-
-function groupByDay(items: MediaItem[], tripStartDate: string): DayGroup[] {
-  const groups = new Map<string, DayGroup>()
-  const start = new Date(tripStartDate)
-  const startDateOnly = new Date(start.getFullYear(), start.getMonth(), start.getDate())
-
-  for (const item of items) {
-    const created = new Date(item.createdAt)
-    const createdDateOnly = new Date(created.getFullYear(), created.getMonth(), created.getDate())
-    const dayNumber = Math.round((createdDateOnly.getTime() - startDateOnly.getTime()) / 86_400_000) + 1
-    const key = createdDateOnly.toISOString().slice(0, 10)
-    const label =
-      dayNumber >= 1
-        ? `Day ${dayNumber}`
-        : created.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
-    if (!groups.has(key)) groups.set(key, { key, label, items: [] })
-    groups.get(key)!.items.push(item)
-  }
-
-  return Array.from(groups.values()).sort((a, b) => b.key.localeCompare(a.key))
-}
 
 export function GalleryPage() {
   const { tripId } = useParams<{ tripId: string }>()
@@ -73,7 +47,7 @@ export function GalleryPage() {
     if (filter === 'mine') return item.uploaderId === myMemberId
     return true
   })
-  const dayGroups = groupByDay(filteredItems, trip.startDate)
+  const dayGroups = groupByTripDay(filteredItems, (item) => item.createdAt, trip.startDate)
   const viewerItem = viewerIndex !== null ? filteredItems[viewerIndex] : null
 
   const handleUpload = async (fileList: FileList | null) => {

@@ -1,6 +1,7 @@
 import {
   CalendarDays,
   FileText,
+  History,
   Images,
   LayoutGrid,
   ListChecks,
@@ -56,9 +57,12 @@ export const TRIP_MODULES: TripModule[] = [
     milestone: 'Milestone 4',
   },
   { path: 'gallery', label: 'Gallery', icon: Images, end: false },
+  { path: 'timeline', label: 'Timeline', icon: History, end: false },
   { path: 'settings', label: 'Settings', icon: SettingsIcon, end: false },
 ]
 
 // Modules with real, working pages — everything else in TRIP_MODULES falls
 // back to an honest ModulePlaceholder in the route table.
-export const REAL_MODULE_PATHS = new Set(['bookings', 'documents', 'settings', 'expenses', 'chat', 'gallery'])
+export const REAL_MODULE_PATHS = new Set([
+  'bookings', 'documents', 'settings', 'expenses', 'chat', 'gallery', 'timeline',
+])

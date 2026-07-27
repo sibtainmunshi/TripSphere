@@ -1,7 +1,18 @@
 import { useState } from 'react'
 import { Outlet, Link, useNavigate, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Archive, ArchiveRestore, Bell, CloudSun, MoreHorizontal, Plus, Settings, Share2, Users } from 'lucide-react'
+import {
+  Archive,
+  ArchiveRestore,
+  Bell,
+  CloudSun,
+  MoreHorizontal,
+  Plus,
+  Settings,
+  Share2,
+  Sparkles,
+  Users,
+} from 'lucide-react'
 import { useTripStore } from '@/store/tripStore'
 import { getTripStatus, STATUS_LABEL, STATUS_BADGE_CLASS, formatDateRange } from '@/utils/tripStatus'
 import { useWeather } from '@/hooks/useWeather'
@@ -100,6 +111,14 @@ export function TripWorkspace() {
                 >
                   <Settings className="h-3.5 w-3.5" />
                   Trip Settings
+                </Link>
+                <Link
+                  to={`/trips/${trip.id}/replay`}
+                  onClick={() => setMoreOpen(false)}
+                  className="flex items-center gap-2 px-4 py-2.5 text-sm text-ink hover:bg-cream"
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Trip Replay
                 </Link>
                 {isCompleted && (
                   <button

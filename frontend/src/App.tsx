@@ -27,6 +27,7 @@ import { ExpensesPage } from '@/features/trip/budgetPlanner/ExpensesPage'
 import { ChatPage } from '@/features/trip/ChatPage'
 import { GalleryPage } from '@/features/trip/GalleryPage'
 import { TimelinePage } from '@/features/trip/timeline/TimelinePage'
+import { TripReplayPage } from '@/features/trip/replay/TripReplayPage'
 import { JoinTrip } from '@/pages/JoinTrip'
 
 function AppShell() {
@@ -84,6 +85,10 @@ function AppShell() {
               />
             ))}
           </Route>
+          {/* Its own route, not nested under TripWorkspace's Outlet — Replay
+              is a fullscreen immersive takeover, not a module page inside
+              the usual hero + sidebar chrome. */}
+          <Route path="trips/:tripId/replay" element={<TripReplayPage />} />
           <Route path="profile" element={<Profile />} />
           <Route path="settings" element={<Settings />} />
           <Route path="*" element={<NotFound />} />

@@ -5,6 +5,7 @@ export interface StayBooking {
   id: string
   trip: string
   hotelName: string
+  address?: string
   checkIn: string
   checkOut: string
   confirmationNumber?: string
@@ -30,6 +31,7 @@ export interface RestaurantReservation {
   id: string
   trip: string
   restaurantName: string
+  address?: string
   reservationAt: string
   partySize?: number
   notes?: string

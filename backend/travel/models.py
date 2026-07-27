@@ -9,6 +9,10 @@ class StayBooking(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     trip = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name='stays')
     hotel_name = models.CharField(max_length=200)
+    # Populated when picked from the real OpenStreetMap search (see
+    # api/views.py's NearbyPlacesView) — blank when hand-typed, since not
+    # every place is on OSM.
+    address = models.CharField(max_length=300, blank=True)
     check_in = models.DateField()
     check_out = models.DateField()
     confirmation_number = models.CharField(max_length=100, blank=True)
@@ -53,6 +57,7 @@ class RestaurantReservation(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     trip = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name='restaurant_reservations')
     restaurant_name = models.CharField(max_length=200)
+    address = models.CharField(max_length=300, blank=True)
     reservation_at = models.DateTimeField()
     party_size = models.PositiveIntegerField(null=True, blank=True)
     notes = models.TextField(blank=True)

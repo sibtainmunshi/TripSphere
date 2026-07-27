@@ -4,19 +4,22 @@ import { TextField } from '@/components/TextField'
 import { createRestaurant, deleteRestaurant, listRestaurants } from '@/services/travelApi'
 import type { RestaurantReservation } from '@/types/travel'
 import { SectionShell } from './SectionShell'
+import { PlacePicker } from './PlacePicker'
 
 function formatDateTime(iso: string) {
   return new Date(iso).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 }
 
-const EMPTY_FORM = { restaurantName: '', reservationAt: '', partySize: '', notes: '' }
+const EMPTY_FORM = { restaurantName: '', address: '', reservationAt: '', partySize: '', notes: '' }
 
 interface RestaurantSectionProps {
   tripId: string
+  lat?: number
+  lon?: number
   onChange: () => void
 }
 
-export function RestaurantSection({ tripId, onChange }: RestaurantSectionProps) {
+export function RestaurantSection({ tripId, lat, lon, onChange }: RestaurantSectionProps) {
   const [reservations, setReservations] = useState<RestaurantReservation[]>([])
   const [loading, setLoading] = useState(true)
   const [isAdding, setIsAdding] = useState(false)
@@ -42,6 +45,7 @@ export function RestaurantSection({ tripId, onChange }: RestaurantSectionProps) 
       const created = await createRestaurant({
         trip: tripId,
         restaurantName: form.restaurantName,
+        address: form.address,
         reservationAt: new Date(form.reservationAt).toISOString(),
         partySize: form.partySize ? Number(form.partySize) : undefined,
         notes: form.notes,
@@ -74,11 +78,13 @@ export function RestaurantSection({ tripId, onChange }: RestaurantSectionProps) 
       {isAdding && (
         <div className="mb-4 flex flex-col gap-3 rounded-xl border border-mist p-4">
           {error && <p className="text-xs text-red-600">{error}</p>}
-          <TextField
-            id="restaurantName"
+          <PlacePicker
+            type="restaurant"
             label="Restaurant name"
-            value={form.restaurantName}
-            onChange={(e) => setForm((f) => ({ ...f, restaurantName: e.target.value }))}
+            lat={lat}
+            lon={lon}
+            name={form.restaurantName}
+            onChange={(restaurantName, address) => setForm((f) => ({ ...f, restaurantName, address: address ?? '' }))}
           />
           <div className="grid grid-cols-2 gap-3">
             <TextField
@@ -121,6 +127,7 @@ export function RestaurantSection({ tripId, onChange }: RestaurantSectionProps) 
             >
               <div>
                 <p className="text-sm font-medium text-ink">{reservation.restaurantName}</p>
+                {reservation.address && <p className="text-xs text-slate">{reservation.address}</p>}
                 <p className="text-xs text-slate">
                   {formatDateTime(reservation.reservationAt)}
                   {reservation.partySize && ` · ${reservation.partySize} people`}

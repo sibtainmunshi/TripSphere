@@ -99,6 +99,40 @@ def _label_for(tags: dict) -> str:
     return 'Point of Interest'
 
 
+def _query_overpass(query: str):
+    """Shared retry logic for both NearbyAttractionsView and
+    NearbyPlacesView — the public Overpass instance is shared
+    infrastructure and gets overloaded under load (real 504s observed in
+    testing), so one retry after a short pause clears most of these
+    transient failures rather than surfacing an error for something that
+    would work a second later. Returns (response, error) — exactly one is
+    None."""
+    response = None
+    last_error: requests.RequestException | None = None
+    for attempt in range(2):
+        try:
+            response = requests.post(
+                OVERPASS_URL,
+                data={'data': query},
+                headers={'User-Agent': 'TripSphere/1.0 (student project; contact via GitHub repo)'},
+                timeout=20,
+            )
+            response.raise_for_status()
+            last_error = None
+            break
+        except requests.RequestException as exc:
+            last_error = exc
+            response = None
+            if attempt == 0:
+                time.sleep(1.5)
+    return response, last_error
+
+
+def _address_for(tags: dict) -> str:
+    parts = [tags.get('addr:housenumber'), tags.get('addr:street'), tags.get('addr:city')]
+    return ', '.join(part for part in parts if part)
+
+
 class NearbyAttractionsView(APIView):
     """Proxies OpenStreetMap's Overpass API for real, named tourist
     attractions near a destination. Proxied through the backend (rather
@@ -135,29 +169,7 @@ class NearbyAttractionsView(APIView):
         out body 40;
         """
 
-        # The public Overpass instance is shared infrastructure and gets
-        # overloaded under load (real 504s observed in testing) — one retry
-        # after a short pause clears most of these transient failures rather
-        # than surfacing an error for something that would work a second later.
-        response = None
-        last_error: requests.RequestException | None = None
-        for attempt in range(2):
-            try:
-                response = requests.post(
-                    OVERPASS_URL,
-                    data={'data': query},
-                    headers={'User-Agent': 'TripSphere/1.0 (student project; contact via GitHub repo)'},
-                    timeout=20,
-                )
-                response.raise_for_status()
-                last_error = None
-                break
-            except requests.RequestException as exc:
-                last_error = exc
-                response = None
-                if attempt == 0:
-                    time.sleep(1.5)
-
+        response, last_error = _query_overpass(query)
         if last_error is not None or response is None:
             logger.error('Overpass API request failed for lat=%s lon=%s: %s', lat, lon, last_error)
             return Response(
@@ -192,6 +204,75 @@ class NearbyAttractionsView(APIView):
         # the same destination (its usage policy asks for restrained use).
         cache.set(cache_key, results, 60 * 60 * 24)
 
+        return Response(results)
+
+
+PLACE_TAG_QUERIES = {
+    'hotel': 'node["tourism"~"^(hotel|guest_house|hostel)$"](around:{radius},{lat},{lon});',
+    'restaurant': 'node["amenity"="restaurant"](around:{radius},{lat},{lon});',
+}
+
+
+class NearbyPlacesView(APIView):
+    """Same Overpass-proxy reasoning as NearbyAttractionsView — real,
+    named hotels/restaurants near a destination, so Stay/Restaurant
+    entries in Bookings can be picked from real places instead of
+    free-typed. This never books anything for real — TripSphere isn't a
+    booking engine (see 2.md) — it just anchors what gets tracked here to
+    a real, named place instead of arbitrary text."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        place_type = request.query_params.get('type')
+        if place_type not in PLACE_TAG_QUERIES:
+            return Response(
+                {'detail': f'type must be one of {list(PLACE_TAG_QUERIES)}.'}, status=status.HTTP_400_BAD_REQUEST
+            )
+        try:
+            lat = float(request.query_params.get('lat', ''))
+            lon = float(request.query_params.get('lon', ''))
+        except ValueError:
+            return Response({'detail': 'lat and lon query params are required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        radius = min(max(int(request.query_params.get('radius', 15000)), 1000), 30000)
+
+        cache_key = f'places:{place_type}:{round(lat, 2)}:{round(lon, 2)}:{radius}'
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return Response(cached)
+
+        tag_query = PLACE_TAG_QUERIES[place_type].format(radius=radius, lat=lat, lon=lon)
+        query = f'[out:json][timeout:25];({tag_query});out body 40;'
+
+        response, last_error = _query_overpass(query)
+        if last_error is not None or response is None:
+            logger.error('Overpass places request failed type=%s lat=%s lon=%s: %s', place_type, lat, lon, last_error)
+            return Response({'detail': 'Could not load nearby places right now.'}, status=status.HTTP_502_BAD_GATEWAY)
+
+        elements = response.json().get('elements', [])
+
+        seen_names = set()
+        results = []
+        for element in elements:
+            tags = element.get('tags', {})
+            name = tags.get('name')
+            if not name or name.lower() in seen_names:
+                continue
+            seen_names.add(name.lower())
+            results.append(
+                {
+                    'id': element['id'],
+                    'name': name,
+                    'address': _address_for(tags),
+                    'lat': element['lat'],
+                    'lon': element['lon'],
+                }
+            )
+            if len(results) >= 25:
+                break
+
+        cache.set(cache_key, results, 60 * 60 * 24)
         return Response(results)
 
 

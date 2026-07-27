@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
+import { useTripStore } from '@/store/tripStore'
 import { BookingTimeline } from './BookingTimeline'
 import { StaySection } from './StaySection'
 import { TransportSection } from './TransportSection'
@@ -7,6 +8,7 @@ import { RestaurantSection } from './RestaurantSection'
 
 export function Bookings() {
   const { tripId } = useParams<{ tripId: string }>()
+  const trip = useTripStore((state) => (tripId ? state.getTripById(tripId) : undefined))
   const [refreshKey, setRefreshKey] = useState(0)
 
   if (!tripId) return null
@@ -18,14 +20,15 @@ export function Bookings() {
       <div>
         <p className="text-sm font-semibold text-ink">Bookings</p>
         <p className="mt-1 text-xs text-slate">
-          Organize bookings made elsewhere — not a booking engine, just one place to keep track of everything.
+          Pick real hotels and restaurants near your destination, or add your own — tracked here, not booked for
+          real.
         </p>
       </div>
 
       <BookingTimeline tripId={tripId} refreshKey={refreshKey} />
-      <StaySection tripId={tripId} onChange={bumpRefresh} />
+      <StaySection tripId={tripId} lat={trip?.lat} lon={trip?.lon} onChange={bumpRefresh} />
       <TransportSection tripId={tripId} onChange={bumpRefresh} />
-      <RestaurantSection tripId={tripId} onChange={bumpRefresh} />
+      <RestaurantSection tripId={tripId} lat={trip?.lat} lon={trip?.lon} onChange={bumpRefresh} />
     </div>
   )
 }

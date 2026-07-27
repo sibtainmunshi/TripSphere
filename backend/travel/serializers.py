@@ -24,6 +24,7 @@ class TripOwnedSerializer(serializers.ModelSerializer):
 
 class StayBookingSerializer(TripOwnedSerializer):
     hotelName = serializers.CharField(source='hotel_name')
+    address = serializers.CharField(required=False, allow_blank=True)
     checkIn = serializers.DateField(source='check_in')
     checkOut = serializers.DateField(source='check_out')
     confirmationNumber = serializers.CharField(source='confirmation_number', required=False, allow_blank=True)
@@ -31,7 +32,10 @@ class StayBookingSerializer(TripOwnedSerializer):
 
     class Meta:
         model = StayBooking
-        fields = ('id', 'trip', 'hotelName', 'checkIn', 'checkOut', 'confirmationNumber', 'notes', 'createdAt')
+        fields = (
+            'id', 'trip', 'hotelName', 'address', 'checkIn', 'checkOut',
+            'confirmationNumber', 'notes', 'createdAt',
+        )
         read_only_fields = ('id', 'createdAt')
 
 
@@ -54,13 +58,14 @@ class TransportBookingSerializer(TripOwnedSerializer):
 
 class RestaurantReservationSerializer(TripOwnedSerializer):
     restaurantName = serializers.CharField(source='restaurant_name')
+    address = serializers.CharField(required=False, allow_blank=True)
     reservationAt = serializers.DateTimeField(source='reservation_at')
     partySize = serializers.IntegerField(source='party_size', required=False, allow_null=True)
     createdAt = serializers.DateTimeField(source='created_at', read_only=True)
 
     class Meta:
         model = RestaurantReservation
-        fields = ('id', 'trip', 'restaurantName', 'reservationAt', 'partySize', 'notes', 'createdAt')
+        fields = ('id', 'trip', 'restaurantName', 'address', 'reservationAt', 'partySize', 'notes', 'createdAt')
         read_only_fields = ('id', 'createdAt')
 
 

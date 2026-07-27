@@ -4,19 +4,22 @@ import { TextField } from '@/components/TextField'
 import { createStay, deleteStay, listStays } from '@/services/travelApi'
 import type { StayBooking } from '@/types/travel'
 import { SectionShell } from './SectionShell'
+import { PlacePicker } from './PlacePicker'
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-const EMPTY_FORM = { hotelName: '', checkIn: '', checkOut: '', confirmationNumber: '', notes: '' }
+const EMPTY_FORM = { hotelName: '', address: '', checkIn: '', checkOut: '', confirmationNumber: '', notes: '' }
 
 interface StaySectionProps {
   tripId: string
+  lat?: number
+  lon?: number
   onChange: () => void
 }
 
-export function StaySection({ tripId, onChange }: StaySectionProps) {
+export function StaySection({ tripId, lat, lon, onChange }: StaySectionProps) {
   const [stays, setStays] = useState<StayBooking[]>([])
   const [loading, setLoading] = useState(true)
   const [isAdding, setIsAdding] = useState(false)
@@ -67,11 +70,13 @@ export function StaySection({ tripId, onChange }: StaySectionProps) {
       {isAdding && (
         <div className="mb-4 flex flex-col gap-3 rounded-xl border border-mist p-4">
           {error && <p className="text-xs text-red-600">{error}</p>}
-          <TextField
-            id="hotelName"
+          <PlacePicker
+            type="hotel"
             label="Hotel name"
-            value={form.hotelName}
-            onChange={(e) => setForm((f) => ({ ...f, hotelName: e.target.value }))}
+            lat={lat}
+            lon={lon}
+            name={form.hotelName}
+            onChange={(hotelName, address) => setForm((f) => ({ ...f, hotelName, address: address ?? '' }))}
           />
           <div className="grid grid-cols-2 gap-3">
             <TextField
@@ -116,6 +121,7 @@ export function StaySection({ tripId, onChange }: StaySectionProps) {
             <div key={stay.id} className="flex items-center justify-between rounded-lg border border-mist px-4 py-3">
               <div>
                 <p className="text-sm font-medium text-ink">{stay.hotelName}</p>
+                {stay.address && <p className="text-xs text-slate">{stay.address}</p>}
                 <p className="text-xs text-slate">
                   {formatDate(stay.checkIn)} → {formatDate(stay.checkOut)}
                   {stay.confirmationNumber && ` · ${stay.confirmationNumber}`}

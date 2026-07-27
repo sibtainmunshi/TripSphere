@@ -8,24 +8,51 @@ from django.conf import settings
 MODEL_PATH = os.path.join(settings.BASE_DIR, 'ml', 'trained_models', 'budget_model.joblib')
 DESTINATIONS_PATH = os.path.join(settings.BASE_DIR, 'ml', 'data', 'destinations.csv')
 
-# Same keyword-matching idea as the frontend's destinationEmoji.ts — a
-# destination's free-text name is mapped to a rough cost tier so the model
-# (trained on tier, not on raw place names it's never seen) can make a
-# prediction for any destination the user types.
+# Tier boundaries calibrated from the real per-day-cost distribution in the
+# 110-destination Kaggle dataset (see build_destinations_dataset) — the
+# bottom/top terciles of real avg_budget_inr_per_person / avg_trip_duration_days,
+# not guessed numbers.
+TIER_BOUNDARY_LOW = 2398
+TIER_BOUNDARY_HIGH = 3000
+
+# Fallback for anything not in destinations.csv (mostly international
+# destinations, since the Kaggle source is India-only) — same
+# keyword-matching idea as the frontend's destinationEmoji.ts.
 TIER_KEYWORDS = {
     'luxury': [
         'dubai', 'singapore', 'maldives', 'switzerland', 'paris', 'london', 'new york',
-        'tokyo', 'europe', 'bali', 'seychelles',
+        'tokyo', 'europe', 'seychelles',
     ],
-    'mid': [
-        'kerala', 'udaipur', 'jaipur', 'andaman', 'coorg', 'thailand', 'sri lanka', 'nepal',
-        'darjeeling', 'mumbai', 'spiti',
-    ],
+    'mid': ['thailand', 'sri lanka'],
 }
+
+_destinations_df = None
+
+
+def _load_destinations():
+    global _destinations_df
+    if _destinations_df is None:
+        _destinations_df = pd.read_csv(DESTINATIONS_PATH) if os.path.exists(DESTINATIONS_PATH) else pd.DataFrame()
+    return _destinations_df
 
 
 def _destination_tier(destination):
     value = destination.lower()
+
+    # Prefer a real per-destination cost from destinations.csv over the
+    # keyword fallback whenever the input actually names a place we have
+    # real data for.
+    df = _load_destinations()
+    if not df.empty:
+        matches = df[df['name'].str.lower().apply(lambda name: name in value or value in name)]
+        if not matches.empty:
+            cost = matches.iloc[0]['avg_daily_cost_inr']
+            if cost <= TIER_BOUNDARY_LOW:
+                return 'budget'
+            if cost <= TIER_BOUNDARY_HIGH:
+                return 'mid'
+            return 'luxury'
+
     for tier, keywords in TIER_KEYWORDS.items():
         if any(keyword in value for keyword in keywords):
             return tier

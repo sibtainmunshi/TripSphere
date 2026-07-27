@@ -1,10 +1,14 @@
 """Generates a synthetic-but-realistic training dataset for the budget
 prediction model. TripSphere is a new product without enough real historical
 trip data yet to train on — this is deliberately labeled as synthetic, not
-disguised as scraped/real bookings. The cost assumptions (₹/day/person by
-destination tier and travel style multiplier) are rough real-world India
-travel estimates, with random noise added so the model has to learn genuine
-signal rather than a perfect formula.
+disguised as scraped/real bookings. random noise is added so the model has
+to learn genuine signal rather than a perfect formula.
+
+The budget/mid per-day cost assumptions are NOT guessed — they're the real
+tercile means (bottom third / middle third of avg_daily_cost_inr) computed
+from the 110-destination Kaggle dataset in destinations.csv (see
+build_destinations_dataset). luxury stays an estimate since that source is
+India-only and has no real coverage of international luxury destinations.
 
 Run with: python manage.py generate_budget_training_data
 """
@@ -19,7 +23,7 @@ from django.core.management.base import BaseCommand
 DESTINATION_TIERS = ['budget', 'mid', 'luxury']
 TRAVEL_STYLES = ['backpacking', 'relaxed', 'adventure', 'luxury']
 
-BASE_DAILY_COST = {'budget': 1500, 'mid': 3000, 'luxury': 8000}
+BASE_DAILY_COST = {'budget': 2085, 'mid': 2730, 'luxury': 8000}
 STYLE_MULTIPLIER = {'backpacking': 0.6, 'relaxed': 1.0, 'adventure': 1.15, 'luxury': 1.8}
 
 OUTPUT_PATH = os.path.join(settings.BASE_DIR, 'ml', 'data', 'budget_training_data.csv')

@@ -1,4 +1,5 @@
 import {
+  BarChart3,
   CalendarDays,
   FileText,
   History,
@@ -58,11 +59,12 @@ export const TRIP_MODULES: TripModule[] = [
   },
   { path: 'gallery', label: 'Gallery', icon: Images, end: false },
   { path: 'timeline', label: 'Timeline', icon: History, end: false },
+  { path: 'analytics', label: 'Analytics', icon: BarChart3, end: false },
   { path: 'settings', label: 'Settings', icon: SettingsIcon, end: false },
 ]
 
 // Modules with real, working pages — everything else in TRIP_MODULES falls
 // back to an honest ModulePlaceholder in the route table.
 export const REAL_MODULE_PATHS = new Set([
-  'bookings', 'documents', 'settings', 'expenses', 'chat', 'gallery', 'timeline',
+  'bookings', 'documents', 'settings', 'expenses', 'chat', 'gallery', 'timeline', 'analytics',
 ])

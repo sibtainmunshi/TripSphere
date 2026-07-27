@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import { BrowserRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom'
 import { AppLayout } from '@/layouts/AppLayout'
@@ -29,6 +29,10 @@ import { GalleryPage } from '@/features/trip/GalleryPage'
 import { TimelinePage } from '@/features/trip/timeline/TimelinePage'
 import { TripReplayPage } from '@/features/trip/replay/TripReplayPage'
 import { JoinTrip } from '@/pages/JoinTrip'
+
+// Plotly is large — kept out of the main bundle and only fetched when
+// someone actually opens Analytics.
+const AnalyticsPage = lazy(() => import('@/features/trip/analytics/AnalyticsPage').then((m) => ({ default: m.AnalyticsPage })))
 
 function AppShell() {
   const [showSplash, setShowSplash] = useState(true)
@@ -69,6 +73,14 @@ function AppShell() {
             <Route path="documents" element={<TravelDocumentsPage />} />
             <Route path="gallery" element={<GalleryPage />} />
             <Route path="timeline" element={<TimelinePage />} />
+            <Route
+              path="analytics"
+              element={
+                <Suspense fallback={<p className="px-6 py-8 text-sm text-slate">Loading…</p>}>
+                  <AnalyticsPage />
+                </Suspense>
+              }
+            />
             <Route path="settings" element={<TripSettings />} />
             {TRIP_MODULES.filter((module) => module.path && !REAL_MODULE_PATHS.has(module.path)).map((module) => (
               <Route

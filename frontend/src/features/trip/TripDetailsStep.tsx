@@ -1,6 +1,7 @@
 import { Briefcase, Heart, MoreHorizontal, TreePalm, Tent, Users } from 'lucide-react'
 import { TextField } from '@/components/TextField'
 import { DestinationSearchField } from './DestinationSearchField'
+import { DestinationIdeas } from './DestinationIdeas'
 
 const TRIP_TYPES = [
   { label: 'Leisure', icon: TreePalm },
@@ -58,6 +59,12 @@ export function TripDetailsStep({ value, onChange, errors }: TripDetailsStepProp
           onChange({ destination, destinationLat: coords?.lat, destinationLon: coords?.lon })
         }
         error={errors.destination}
+      />
+
+      <DestinationIdeas
+        onPick={(destination, coords) =>
+          onChange({ destination, destinationLat: coords?.lat, destinationLon: coords?.lon })
+        }
       />
 
       <div className="grid grid-cols-2 gap-3">

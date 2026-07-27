@@ -1,16 +1,27 @@
 import { useEffect, useState } from 'react'
-import { Loader2, Wallet } from 'lucide-react'
+import { Loader2, Sparkles, Wallet } from 'lucide-react'
 import { TextField } from '@/components/TextField'
 import { getBudget, saveBudget } from '@/services/budgetApi'
+import { predictBudget } from '@/services/mlApi'
 import { EXPENSE_CATEGORIES, type Budget, type Expense } from '@/types/budget'
+import type { TravelStyle } from '@/types/ml'
+import type { Trip } from '@/types'
+
+const TRAVEL_STYLES: { value: TravelStyle; label: string }[] = [
+  { value: 'backpacking', label: 'Backpacking' },
+  { value: 'relaxed', label: 'Relaxed' },
+  { value: 'adventure', label: 'Adventure' },
+  { value: 'luxury', label: 'Luxury' },
+]
 
 interface BudgetSectionProps {
   tripId: string
+  trip: Trip
   expenses: Expense[]
   onChange: () => void
 }
 
-export function BudgetSection({ tripId, expenses, onChange }: BudgetSectionProps) {
+export function BudgetSection({ tripId, trip, expenses, onChange }: BudgetSectionProps) {
   const [budget, setBudget] = useState<Budget | null>(null)
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
@@ -18,6 +29,9 @@ export function BudgetSection({ tripId, expenses, onChange }: BudgetSectionProps
   const [error, setError] = useState<string | null>(null)
   const [totalInput, setTotalInput] = useState('')
   const [categoryInputs, setCategoryInputs] = useState<Record<string, string>>({})
+  const [estimateStyle, setEstimateStyle] = useState<TravelStyle>('relaxed')
+  const [estimating, setEstimating] = useState(false)
+  const [estimateHint, setEstimateHint] = useState<string | null>(null)
 
   useEffect(() => {
     getBudget(tripId)
@@ -72,6 +86,27 @@ export function BudgetSection({ tripId, expenses, onChange }: BudgetSectionProps
     }
   }
 
+  const handleEstimate = async () => {
+    setEstimateHint(null)
+    const durationDays = Math.max(
+      1,
+      Math.round((new Date(trip.endDate).getTime() - new Date(trip.startDate).getTime()) / 86_400_000) + 1,
+    )
+    const travelers = Math.max(1, trip.members?.length ?? trip.memberCount ?? 1)
+    setEstimating(true)
+    try {
+      const result = await predictBudget(trip.destination, durationDays, travelers, estimateStyle)
+      setTotalInput(String(result.predictedBudget))
+      setEstimateHint(
+        `Our estimate for ${travelers} traveler${travelers === 1 ? '' : 's'}, ${durationDays} days: ₹${result.rangeMin.toLocaleString('en-IN')}–₹${result.rangeMax.toLocaleString('en-IN')}`,
+      )
+    } catch {
+      setEstimateHint("Couldn't get an estimate right now — enter your budget manually.")
+    } finally {
+      setEstimating(false)
+    }
+  }
+
   const categoriesWithBudget = budget ? EXPENSE_CATEGORIES.filter((cat) => budget.categoryBudgets[cat.value] != null) : []
 
   return (
@@ -93,6 +128,34 @@ export function BudgetSection({ tripId, expenses, onChange }: BudgetSectionProps
       ) : !budget || editing ? (
         <div className="flex flex-col gap-3">
           {error && <p className="text-xs text-red-600">{error}</p>}
+
+          <div className="flex items-end gap-2 rounded-xl bg-cream p-3">
+            <div className="flex flex-1 flex-col gap-1.5">
+              <label className="text-xs font-medium text-ink">Not sure? Estimate for</label>
+              <select
+                value={estimateStyle}
+                onChange={(event) => setEstimateStyle(event.target.value as TravelStyle)}
+                className="w-full rounded-lg border border-mist bg-white px-3 py-2 text-sm text-ink outline-none focus:border-ocean"
+              >
+                {TRAVEL_STYLES.map((style) => (
+                  <option key={style.value} value={style.value}>
+                    {style.label} travel
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button
+              type="button"
+              onClick={handleEstimate}
+              disabled={estimating}
+              className="flex items-center gap-1.5 rounded-lg bg-lavender/20 px-3.5 py-2 text-sm font-medium text-lavender-dark transition-colors hover:bg-lavender/30 disabled:opacity-60"
+            >
+              {estimating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+              Estimate
+            </button>
+          </div>
+          {estimateHint && <p className="text-xs text-slate">{estimateHint}</p>}
+
           <TextField
             id="totalBudget"
             label="Total budget (₹)"

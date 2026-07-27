@@ -22,7 +22,7 @@ export function ExpensesPage() {
       .finally(() => setLoadingExpenses(false))
   }, [tripId, refreshKey])
 
-  if (!tripId) return null
+  if (!tripId || !trip) return null
 
   const bumpRefresh = () => setRefreshKey((key) => key + 1)
 
@@ -33,7 +33,7 @@ export function ExpensesPage() {
         <p className="mt-1 text-xs text-slate">Track spending by category, and see who owes whom.</p>
       </div>
 
-      <BudgetSection tripId={tripId} expenses={expenses} onChange={bumpRefresh} />
+      <BudgetSection tripId={tripId} trip={trip} expenses={expenses} onChange={bumpRefresh} />
       <ExpenseSection
         tripId={tripId}
         members={trip?.members ?? []}

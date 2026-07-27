@@ -5,21 +5,37 @@ import {
   Archive,
   ArchiveRestore,
   Bell,
+  Camera,
   CloudSun,
+  IndianRupee,
   MoreHorizontal,
   Plus,
   Settings,
   Share2,
   Sparkles,
+  UserPlus,
   Users,
+  Wallet,
+  type LucideIcon,
 } from 'lucide-react'
 import { useTripStore } from '@/store/tripStore'
-import { getTripStatus, STATUS_LABEL, STATUS_BADGE_CLASS, formatDateRange } from '@/utils/tripStatus'
+import { getTripStatus, STATUS_LABEL, STATUS_BADGE_CLASS, formatDateRange, formatRelativeTime } from '@/utils/tripStatus'
 import { useWeather } from '@/hooks/useWeather'
 import { useDestinationImage } from '@/hooks/useDestinationImage'
 import { getWeatherIcon } from '@/services/weather'
 import { getDestinationEmoji } from '@/features/trip/destinationEmoji'
 import { Avatar } from '@/components/Avatar'
+import { useNotifications } from '@/hooks/useNotifications'
+import { markAllNotificationsRead } from '@/services/notificationApi'
+import type { NotificationType } from '@/types/notification'
+
+const NOTIF_ICONS: Record<NotificationType, LucideIcon> = {
+  expense_added: Wallet,
+  budget_updated: IndianRupee,
+  photo_uploaded: Camera,
+  member_joined: UserPlus,
+  settlement_paid: IndianRupee,
+}
 
 export function TripWorkspace() {
   const navigate = useNavigate()
@@ -29,8 +45,10 @@ export function TripWorkspace() {
   const setArchived = useTripStore((state) => state.setArchived)
   const { data: weather } = useWeather(trip?.lat, trip?.lon)
   const heroImage = useDestinationImage(trip?.destination ?? '')
+  const { notifications, setNotifications } = useNotifications(tripId ?? '')
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
+  const unreadCount = notifications.filter((n) => !n.isRead).length
 
   if (!trip) {
     if (hasLoadedTrips) navigate('/', { replace: true })
@@ -75,17 +93,46 @@ export function TripWorkspace() {
             <button
               type="button"
               onClick={() => {
-                setNotificationsOpen((open) => !open)
+                const opening = !notificationsOpen
+                setNotificationsOpen(opening)
                 setMoreOpen(false)
+                if (opening && unreadCount > 0 && tripId) {
+                  setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })))
+                  markAllNotificationsRead(tripId)
+                }
               }}
               aria-label="Notifications"
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-ink transition-colors hover:bg-white"
+              className="relative flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-ink transition-colors hover:bg-white"
             >
               <Bell className="h-4 w-4" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-semibold text-white">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
             </button>
             {notificationsOpen && (
-              <div className="absolute top-full right-0 z-20 mt-2 w-64 rounded-xl border border-mist bg-white p-4 text-sm text-slate shadow-lg">
-                You&rsquo;re all caught up — no notifications yet.
+              <div className="absolute top-full right-0 z-20 mt-2 w-72 overflow-hidden rounded-xl border border-mist bg-white shadow-lg">
+                {notifications.length === 0 ? (
+                  <p className="p-4 text-sm text-slate">You&rsquo;re all caught up — no notifications yet.</p>
+                ) : (
+                  <div className="max-h-80 overflow-y-auto">
+                    {notifications.map((notification) => {
+                      const Icon = NOTIF_ICONS[notification.notifType]
+                      return (
+                        <div key={notification.id} className="flex items-start gap-2.5 border-b border-mist px-4 py-3 last:border-0">
+                          <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-cream">
+                            <Icon className="h-3.5 w-3.5 text-ocean" />
+                          </span>
+                          <div>
+                            <p className="text-sm text-ink">{notification.message}</p>
+                            <p className="mt-0.5 text-xs text-slate">{formatRelativeTime(notification.createdAt)}</p>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
             )}
           </div>

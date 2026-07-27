@@ -66,6 +66,7 @@ INSTALLED_APPS = [
     'analytics',
     'chat',
     'ml',
+    'notifications',
     'api',
 ]
 

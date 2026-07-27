@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+from notifications.services import notify_trip_members
 from travel.serializers import TripOwnedSerializer
 
 from .models import Media
@@ -44,10 +45,13 @@ class MediaSerializer(TripOwnedSerializer):
             uploader = trip.members.get(user=request.user)
         file = validated_data['file']
         media_type = 'video' if file.name.lower().endswith(VIDEO_EXTENSIONS) else 'photo'
-        return Media.objects.create(
+        media = Media.objects.create(
             trip=trip,
             uploader=uploader,
             file=file,
             media_type=media_type,
             caption=validated_data.get('caption', ''),
         )
+        uploader_name = uploader.name or uploader.email
+        notify_trip_members(trip, uploader.id, 'photo_uploaded', f'{uploader_name} added a {media_type}')
+        return media

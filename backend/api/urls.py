@@ -11,6 +11,7 @@ urlpatterns = [
     path('', include('budget.urls')),
     path('', include('chat.urls')),
     path('', include('gallery.urls')),
+    path('', include('notifications.urls')),
     path('attractions/', NearbyAttractionsView.as_view(), name='nearby-attractions'),
     path('chat-planner/', ChatPlannerView.as_view(), name='chat-planner'),
 ]

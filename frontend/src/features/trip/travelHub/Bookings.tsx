@@ -27,7 +27,7 @@ export function Bookings() {
 
       <BookingTimeline tripId={tripId} refreshKey={refreshKey} />
       <StaySection tripId={tripId} lat={trip?.lat} lon={trip?.lon} onChange={bumpRefresh} />
-      <TransportSection tripId={tripId} onChange={bumpRefresh} />
+      <TransportSection tripId={tripId} destination={trip?.destination} onChange={bumpRefresh} />
       <RestaurantSection tripId={tripId} lat={trip?.lat} lon={trip?.lon} onChange={bumpRefresh} />
     </div>
   )

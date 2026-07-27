@@ -1,3 +1,4 @@
+from django.urls import path
 from rest_framework.routers import DefaultRouter
 
 from .views import (
@@ -5,6 +6,7 @@ from .views import (
     StayBookingViewSet,
     TransportBookingViewSet,
     TravelDocumentViewSet,
+    TravelPlacesSearchView,
 )
 
 router = DefaultRouter()
@@ -13,4 +15,6 @@ router.register('travel/transport', TransportBookingViewSet, basename='transport
 router.register('travel/restaurants', RestaurantReservationViewSet, basename='restaurant-reservation')
 router.register('travel/documents', TravelDocumentViewSet, basename='travel-document')
 
-urlpatterns = router.urls
+urlpatterns = router.urls + [
+    path('travel/places-search/', TravelPlacesSearchView.as_view(), name='travel-places-search'),
+]

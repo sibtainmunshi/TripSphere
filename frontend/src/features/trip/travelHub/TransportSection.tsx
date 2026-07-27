@@ -4,6 +4,8 @@ import { TextField } from '@/components/TextField'
 import { createTransport, deleteTransport, listTransport } from '@/services/travelApi'
 import type { TransportBooking, TransportMode } from '@/types/travel'
 import { SectionShell } from './SectionShell'
+import { RoutePlacePicker } from './RoutePlacePicker'
+import { BookingModeToggle, type BookingMode } from './BookingModeToggle'
 
 const MODES: { value: TransportMode; label: string; icon: typeof Plane }[] = [
   { value: 'flight', label: 'Flight', icon: Plane },
@@ -12,33 +14,44 @@ const MODES: { value: TransportMode; label: string; icon: typeof Plane }[] = [
   { value: 'car', label: 'Car', icon: Car },
 ]
 
+// Only flight/train have a real dataset behind them (real airports / real
+// Indian train stations) — bus/car routes stay free text either way.
+const REAL_ROUTE_TYPE: Partial<Record<TransportMode, 'airport' | 'station'>> = {
+  flight: 'airport',
+  train: 'station',
+}
+
 function formatDateTime(iso: string) {
   return new Date(iso).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 }
 
-const EMPTY_FORM = {
-  mode: 'flight' as TransportMode,
-  operator: '',
-  fromLocation: '',
-  toLocation: '',
-  departureAt: '',
-  arrivalAt: '',
-  confirmationNumber: '',
-  notes: '',
+function emptyForm(toLocation = '') {
+  return {
+    mode: 'flight' as TransportMode,
+    operator: '',
+    fromLocation: '',
+    toLocation,
+    departureAt: '',
+    arrivalAt: '',
+    confirmationNumber: '',
+    notes: '',
+  }
 }
 
 interface TransportSectionProps {
   tripId: string
+  destination?: string
   onChange: () => void
 }
 
-export function TransportSection({ tripId, onChange }: TransportSectionProps) {
+export function TransportSection({ tripId, destination, onChange }: TransportSectionProps) {
   const [bookings, setBookings] = useState<TransportBooking[]>([])
   const [loading, setLoading] = useState(true)
   const [isAdding, setIsAdding] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [form, setForm] = useState(EMPTY_FORM)
+  const [form, setForm] = useState(emptyForm())
+  const [mode, setMode] = useState<BookingMode>('search')
 
   useEffect(() => {
     listTransport(tripId)
@@ -46,6 +59,17 @@ export function TransportSection({ tripId, onChange }: TransportSectionProps) {
       .catch(() => setError('Could not load transport bookings.'))
       .finally(() => setLoading(false))
   }, [tripId])
+
+  const routeType = REAL_ROUTE_TYPE[form.mode]
+
+  const handleToggleAdd = () => {
+    setIsAdding((wasAdding) => {
+      // Opening fresh — default "To" to the trip's own destination, since
+      // that's almost always where transport booked here is heading.
+      if (!wasAdding) setForm(emptyForm(destination ?? ''))
+      return !wasAdding
+    })
+  }
 
   const handleAdd = async () => {
     setError(null)
@@ -62,7 +86,8 @@ export function TransportSection({ tripId, onChange }: TransportSectionProps) {
         arrivalAt: form.arrivalAt ? new Date(form.arrivalAt).toISOString() : undefined,
       })
       setBookings((prev) => [...prev, created].sort((a, b) => a.departureAt.localeCompare(b.departureAt)))
-      setForm(EMPTY_FORM)
+      setForm(emptyForm())
+      setMode('search')
       setIsAdding(false)
       onChange()
     } catch {
@@ -80,45 +105,67 @@ export function TransportSection({ tripId, onChange }: TransportSectionProps) {
   }
 
   return (
-    <SectionShell icon={Plane} title="Transport" isAdding={isAdding} onToggleAdd={() => setIsAdding((v) => !v)}>
+    <SectionShell icon={Plane} title="Transport" isAdding={isAdding} onToggleAdd={handleToggleAdd}>
       {isAdding && (
         <div className="mb-4 flex flex-col gap-3 rounded-xl border border-mist p-4">
           {error && <p className="text-xs text-red-600">{error}</p>}
           <div className="grid grid-cols-4 gap-2">
-            {MODES.map((mode) => (
+            {MODES.map((modeOption) => (
               <button
-                key={mode.value}
+                key={modeOption.value}
                 type="button"
-                onClick={() => setForm((f) => ({ ...f, mode: mode.value }))}
+                onClick={() => setForm((f) => ({ ...f, mode: modeOption.value }))}
                 className={`flex flex-col items-center gap-1 rounded-lg border py-2.5 text-xs font-medium transition-colors ${
-                  form.mode === mode.value ? 'border-ocean bg-ocean/5 text-ocean' : 'border-mist text-slate'
+                  form.mode === modeOption.value ? 'border-ocean bg-ocean/5 text-ocean' : 'border-mist text-slate'
                 }`}
               >
-                <mode.icon className="h-4 w-4" />
-                {mode.label}
+                <modeOption.icon className="h-4 w-4" />
+                {modeOption.label}
               </button>
             ))}
           </div>
+
+          {routeType && <BookingModeToggle mode={mode} onChange={setMode} />}
+
           <TextField
             id="operator"
             label="Operator / flight no. (optional)"
             value={form.operator}
             onChange={(e) => setForm((f) => ({ ...f, operator: e.target.value }))}
           />
-          <div className="grid grid-cols-2 gap-3">
-            <TextField
-              id="fromLocation"
-              label="From"
-              value={form.fromLocation}
-              onChange={(e) => setForm((f) => ({ ...f, fromLocation: e.target.value }))}
-            />
-            <TextField
-              id="toLocation"
-              label="To"
-              value={form.toLocation}
-              onChange={(e) => setForm((f) => ({ ...f, toLocation: e.target.value }))}
-            />
-          </div>
+
+          {routeType && mode === 'search' ? (
+            <div className="grid grid-cols-2 gap-3">
+              <RoutePlacePicker
+                type={routeType}
+                label="From"
+                value={form.fromLocation}
+                onChange={(value) => setForm((f) => ({ ...f, fromLocation: value }))}
+              />
+              <RoutePlacePicker
+                type={routeType}
+                label="To"
+                value={form.toLocation}
+                onChange={(value) => setForm((f) => ({ ...f, toLocation: value }))}
+              />
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              <TextField
+                id="fromLocation"
+                label="From"
+                value={form.fromLocation}
+                onChange={(e) => setForm((f) => ({ ...f, fromLocation: e.target.value }))}
+              />
+              <TextField
+                id="toLocation"
+                label="To"
+                value={form.toLocation}
+                onChange={(e) => setForm((f) => ({ ...f, toLocation: e.target.value }))}
+              />
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-3">
             <TextField
               id="departureAt"

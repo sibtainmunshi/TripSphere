@@ -5,6 +5,7 @@ import { createStay, deleteStay, listStays } from '@/services/travelApi'
 import type { StayBooking } from '@/types/travel'
 import { SectionShell } from './SectionShell'
 import { PlacePicker } from './PlacePicker'
+import { BookingModeToggle, type BookingMode } from './BookingModeToggle'
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -26,6 +27,7 @@ export function StaySection({ tripId, lat, lon, onChange }: StaySectionProps) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [form, setForm] = useState(EMPTY_FORM)
+  const [mode, setMode] = useState<BookingMode>('search')
 
   useEffect(() => {
     listStays(tripId)
@@ -49,6 +51,7 @@ export function StaySection({ tripId, lat, lon, onChange }: StaySectionProps) {
       const created = await createStay({ trip: tripId, ...form })
       setStays((prev) => [...prev, created].sort((a, b) => a.checkIn.localeCompare(b.checkIn)))
       setForm(EMPTY_FORM)
+      setMode('search')
       setIsAdding(false)
       onChange()
     } catch {
@@ -70,14 +73,32 @@ export function StaySection({ tripId, lat, lon, onChange }: StaySectionProps) {
       {isAdding && (
         <div className="mb-4 flex flex-col gap-3 rounded-xl border border-mist p-4">
           {error && <p className="text-xs text-red-600">{error}</p>}
-          <PlacePicker
-            type="hotel"
-            label="Hotel name"
-            lat={lat}
-            lon={lon}
-            name={form.hotelName}
-            onChange={(hotelName, address) => setForm((f) => ({ ...f, hotelName, address: address ?? '' }))}
-          />
+          <BookingModeToggle mode={mode} onChange={setMode} />
+          {mode === 'search' ? (
+            <PlacePicker
+              type="hotel"
+              label="Hotel name"
+              lat={lat}
+              lon={lon}
+              name={form.hotelName}
+              onChange={(hotelName, address) => setForm((f) => ({ ...f, hotelName, address: address ?? '' }))}
+            />
+          ) : (
+            <>
+              <TextField
+                id="hotelName"
+                label="Hotel name"
+                value={form.hotelName}
+                onChange={(e) => setForm((f) => ({ ...f, hotelName: e.target.value }))}
+              />
+              <TextField
+                id="address"
+                label="Address (optional)"
+                value={form.address}
+                onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
+              />
+            </>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <TextField
               id="checkIn"

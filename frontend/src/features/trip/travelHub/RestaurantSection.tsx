@@ -5,6 +5,7 @@ import { createRestaurant, deleteRestaurant, listRestaurants } from '@/services/
 import type { RestaurantReservation } from '@/types/travel'
 import { SectionShell } from './SectionShell'
 import { PlacePicker } from './PlacePicker'
+import { BookingModeToggle, type BookingMode } from './BookingModeToggle'
 
 function formatDateTime(iso: string) {
   return new Date(iso).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
@@ -26,6 +27,7 @@ export function RestaurantSection({ tripId, lat, lon, onChange }: RestaurantSect
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [form, setForm] = useState(EMPTY_FORM)
+  const [mode, setMode] = useState<BookingMode>('search')
 
   useEffect(() => {
     listRestaurants(tripId)
@@ -52,6 +54,7 @@ export function RestaurantSection({ tripId, lat, lon, onChange }: RestaurantSect
       })
       setReservations((prev) => [...prev, created].sort((a, b) => a.reservationAt.localeCompare(b.reservationAt)))
       setForm(EMPTY_FORM)
+      setMode('search')
       setIsAdding(false)
       onChange()
     } catch {
@@ -78,14 +81,32 @@ export function RestaurantSection({ tripId, lat, lon, onChange }: RestaurantSect
       {isAdding && (
         <div className="mb-4 flex flex-col gap-3 rounded-xl border border-mist p-4">
           {error && <p className="text-xs text-red-600">{error}</p>}
-          <PlacePicker
-            type="restaurant"
-            label="Restaurant name"
-            lat={lat}
-            lon={lon}
-            name={form.restaurantName}
-            onChange={(restaurantName, address) => setForm((f) => ({ ...f, restaurantName, address: address ?? '' }))}
-          />
+          <BookingModeToggle mode={mode} onChange={setMode} />
+          {mode === 'search' ? (
+            <PlacePicker
+              type="restaurant"
+              label="Restaurant name"
+              lat={lat}
+              lon={lon}
+              name={form.restaurantName}
+              onChange={(restaurantName, address) => setForm((f) => ({ ...f, restaurantName, address: address ?? '' }))}
+            />
+          ) : (
+            <>
+              <TextField
+                id="restaurantName"
+                label="Restaurant name"
+                value={form.restaurantName}
+                onChange={(e) => setForm((f) => ({ ...f, restaurantName: e.target.value }))}
+              />
+              <TextField
+                id="address"
+                label="Address (optional)"
+                value={form.address}
+                onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
+              />
+            </>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <TextField
               id="reservationAt"

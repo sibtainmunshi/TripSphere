@@ -1,8 +1,11 @@
 from django.db.models import Q
-from rest_framework import permissions, viewsets
+from rest_framework import permissions, status, viewsets
 from rest_framework.parsers import FormParser, MultiPartParser
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from .models import RestaurantReservation, StayBooking, TransportBooking, TravelDocument
+from .places import search_airports, search_stations
 from .serializers import (
     RestaurantReservationSerializer,
     StayBookingSerializer,
@@ -50,3 +53,22 @@ class TravelDocumentViewSet(TripScopedViewSet):
     queryset = TravelDocument.objects.all()
     serializer_class = TravelDocumentSerializer
     parser_classes = [MultiPartParser, FormParser]
+
+
+class TravelPlacesSearchView(APIView):
+    """Real airports (OpenFlights) / real Indian train stations (see
+    travel/places.py and the build_travel_places management command) for
+    the flight/train route picker — text search, not a live API, since
+    both are static reference datasets."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        place_type = request.query_params.get('type')
+        query = (request.query_params.get('query') or '').strip()
+        if place_type not in ('airport', 'station'):
+            return Response({'detail': 'type must be airport or station.'}, status=status.HTTP_400_BAD_REQUEST)
+        if len(query) < 2:
+            return Response([])
+        search = search_airports if place_type == 'airport' else search_stations
+        return Response(search(query))

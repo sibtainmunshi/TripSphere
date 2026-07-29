@@ -9,7 +9,7 @@ import {
   Sparkles,
   User as UserIcon,
 } from 'lucide-react'
-import logo from '@/assets/logo.svg'
+import logo from '@/assets/logo.png'
 import { Avatar } from './Avatar'
 import { useAuthStore } from '@/store/authStore'
 

@@ -1,17 +1,26 @@
 import { motion, type Variants } from 'framer-motion'
 import { useEffect, useRef, useState } from 'react'
+import { Route, Briefcase, Camera, Heart } from 'lucide-react'
+import logoMark from '@/assets/logo.png'
 import splashBg from '@/assets/splash-bg.jpg'
 
 const HOLD_AFTER_ENTRANCE_MS = 1600
 const SAFETY_TIMEOUT_MS = 5000
 const EASE_OUT = [0.16, 1, 0.3, 1] as const
 
+const FEATURES = [
+  { icon: Route, label: 'Plan Together' },
+  { icon: Briefcase, label: 'Track Everything' },
+  { icon: Camera, label: 'Share Memories' },
+  { icon: Heart, label: 'Relive Forever' },
+]
+
 const containerVariants: Variants = {
   hidden: {},
   visible: {
     transition: {
-      delayChildren: 0.15,
-      staggerChildren: 0.14,
+      delayChildren: 0.12,
+      staggerChildren: 0.11,
     },
   },
   exit: {
@@ -20,30 +29,19 @@ const containerVariants: Variants = {
   },
 }
 
-const wordmarkVariants: Variants = {
-  hidden: { opacity: 0, y: 14 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.6, ease: EASE_OUT },
-  },
+const fadeUp: Variants = {
+  hidden: { opacity: 0, y: 12 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.55, ease: EASE_OUT } },
 }
 
-const taglineVariants: Variants = {
-  hidden: { opacity: 0, y: 10 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.5, ease: EASE_OUT },
-  },
-}
-
-const trackVariants: Variants = {
+const fadeIn: Variants = {
   hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { duration: 0.4, ease: EASE_OUT },
-  },
+  visible: { opacity: 1, transition: { duration: 0.5, ease: EASE_OUT } },
+}
+
+const logoVariants: Variants = {
+  hidden: { opacity: 0, scale: 0.85 },
+  visible: { opacity: 1, scale: 1, transition: { duration: 0.7, ease: EASE_OUT } },
 }
 
 interface SplashScreenProps {
@@ -80,7 +78,7 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
 
   return (
     <motion.div
-      className="fixed inset-0 z-50 overflow-hidden bg-black"
+      className="fixed inset-0 z-50 overflow-hidden bg-navy-dark"
       variants={containerVariants}
       initial="hidden"
       animate="visible"
@@ -90,41 +88,97 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
         className="absolute inset-0 bg-cover bg-center"
         style={{ backgroundImage: `url(${splashBg})` }}
         initial={{ scale: 1 }}
-        animate={{ scale: 1.06 }}
-        transition={{ duration: 4, ease: 'linear' }}
+        animate={{ scale: 1.04 }}
+        transition={{ duration: 5, ease: 'linear' }}
       />
 
-      <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/15 to-black/70" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_30%,rgba(0,0,0,0.5)_100%)]" />
-
-      <div className="relative flex h-full flex-col items-center justify-center gap-5 px-6">
-        <motion.h1
-          variants={wordmarkVariants}
-          className="text-4xl font-semibold tracking-tight text-white drop-shadow-sm sm:text-5xl"
-        >
-          TripSphere
-        </motion.h1>
-
-        <motion.p
-          variants={taglineVariants}
-          className="max-w-xs text-center text-sm leading-relaxed text-white/80 drop-shadow-sm sm:max-w-sm sm:text-base"
-        >
-          From &ldquo;Where should we go?&rdquo; to &ldquo;Remember that
-          trip?&rdquo; — Everything in one place.
-        </motion.p>
-
+      <div className="relative flex h-full flex-col items-center">
+        {/* Corner brand kicker */}
         <motion.div
-          variants={trackVariants}
-          onAnimationComplete={handleEntranceComplete}
-          className="mt-3 h-[3px] w-28 overflow-hidden rounded-full bg-white/20"
+          variants={fadeIn}
+          className="absolute top-[clamp(1.25rem,4vh,2.75rem)] left-[clamp(1.25rem,3.5vw,2.75rem)]"
         >
+          <p className="text-[10px] leading-relaxed font-medium tracking-[0.35em] text-mist/70 uppercase sm:text-xs">
+            Your Journey
+            <br />
+            Our Workspace
+          </p>
+          <div className="mt-2 h-[2px] w-10 bg-sky" />
+        </motion.div>
+
+        {/* Corner dot grid */}
+        <motion.div
+          variants={fadeIn}
+          className="absolute top-[clamp(1.25rem,4vh,2.75rem)] right-[clamp(1.25rem,3.5vw,2.75rem)] grid grid-cols-5 gap-3 sm:gap-4"
+        >
+          {Array.from({ length: 15 }).map((_, i) => (
+            <span key={i} className="h-[3px] w-[3px] rounded-full bg-white/35" />
+          ))}
+        </motion.div>
+
+        {/* Center brand block */}
+        <div className="flex flex-1 flex-col items-center justify-center gap-5 px-6 pb-[20vh] sm:pb-[22vh]">
+          <motion.div variants={logoVariants} className="relative">
+            <div className="absolute inset-0 -m-5 rounded-full bg-sky/25 blur-2xl" />
+            <img
+              src={logoMark}
+              alt=""
+              className="relative h-[clamp(5.5rem,12vw,11rem)] w-[clamp(5.5rem,12vw,11rem)] drop-shadow-lg"
+            />
+          </motion.div>
+
+          <motion.h1
+            variants={fadeUp}
+            className="text-[clamp(2.5rem,5.5vw,4.75rem)] font-bold tracking-tight text-white drop-shadow-sm"
+          >
+            TripSphere
+          </motion.h1>
+
+          <motion.p
+            variants={fadeUp}
+            className="text-[clamp(0.8rem,1.3vw,1.125rem)] text-center font-medium tracking-[0.3em] text-sky uppercase"
+          >
+            Your Journey, Our Workspace.
+          </motion.p>
+
           <motion.div
-            className="h-full rounded-full bg-gradient-to-r from-[#E8B466] to-[#C1663B]"
-            style={{ transformOrigin: 'left' }}
-            initial={{ scaleX: 0 }}
-            animate={entered ? { scaleX: 1 } : undefined}
-            transition={{ duration: HOLD_AFTER_ENTRANCE_MS / 1000, ease: 'easeInOut' }}
-          />
+            variants={fadeIn}
+            onAnimationComplete={handleEntranceComplete}
+            className="relative mt-2 h-px w-44 bg-white/15"
+          >
+            <motion.div
+              className="absolute inset-y-0 left-1/2 w-16 -translate-x-1/2 bg-gradient-to-r from-transparent via-sky to-transparent"
+              initial={{ opacity: 0 }}
+              animate={entered ? { opacity: 1 } : undefined}
+              transition={{ duration: 0.6, ease: 'easeInOut' }}
+            />
+          </motion.div>
+        </div>
+
+        {/* Feature row */}
+        <motion.div
+          variants={fadeUp}
+          className="absolute inset-x-0 bottom-[13%] flex justify-center px-6 sm:bottom-[15%]"
+        >
+          <div className="flex items-start divide-x divide-white/15">
+            {FEATURES.map(({ icon: Icon, label }) => (
+              <div key={label} className="flex flex-col items-center gap-2.5 px-4 sm:px-8">
+                <div className="flex h-11 w-11 items-center justify-center rounded-full border border-sky/40 sm:h-14 sm:w-14">
+                  <Icon className="h-4 w-4 text-sky sm:h-5 sm:w-5" strokeWidth={1.75} />
+                </div>
+                <span className="text-center text-[9px] font-medium tracking-[0.2em] text-white/75 uppercase sm:text-[11px]">
+                  {label}
+                </span>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* Bottom rule */}
+        <motion.div variants={fadeIn} className="absolute inset-x-0 bottom-6 flex justify-center px-10 sm:bottom-9">
+          <div className="relative h-px w-full max-w-sm bg-white/10">
+            <div className="absolute inset-y-0 left-1/2 w-24 -translate-x-1/2 bg-gradient-to-r from-transparent via-sky to-transparent sm:w-32" />
+          </div>
         </motion.div>
       </div>
     </motion.div>

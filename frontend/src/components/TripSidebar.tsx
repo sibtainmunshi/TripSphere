@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { NavLink, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, ChevronDown, Plus } from 'lucide-react'
-import logo from '@/assets/logo.svg'
+import logo from '@/assets/logo.png'
 import { Avatar } from './Avatar'
 import { useAuthStore } from '@/store/authStore'
 import { useTripStore } from '@/store/tripStore'

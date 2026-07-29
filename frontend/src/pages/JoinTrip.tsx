@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { CalendarDays, Loader2, MapPin, PartyPopper } from 'lucide-react'
-import logo from '@/assets/logo.svg'
+import logo from '@/assets/logo.png'
 import { useAuthStore } from '@/store/authStore'
 import { acceptJoin, getJoinPreview, type JoinPreview } from '@/services/tripsApi'
 import { getApiErrorMessage } from '@/services/api'

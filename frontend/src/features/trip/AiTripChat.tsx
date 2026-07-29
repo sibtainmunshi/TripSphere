@@ -16,7 +16,7 @@ import {
   X,
   Zap,
 } from 'lucide-react'
-import logo from '@/assets/logo.svg'
+import logo from '@/assets/logo.png'
 import { Avatar } from '@/components/Avatar'
 import { useAuthStore } from '@/store/authStore'
 import { useTripStore } from '@/store/tripStore'

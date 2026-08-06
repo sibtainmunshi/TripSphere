@@ -1,22 +1,25 @@
 import { useEffect, useRef, useState, type MouseEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Compass,
   Feather,
+  Heart,
   History,
   IndianRupee,
   Landmark,
-  Mountain,
+  MapPin,
   PartyPopper,
+  Plane,
   Plus,
   Save,
   Send,
+  Sparkles,
   Users,
-  Waves,
   X,
   Zap,
 } from 'lucide-react'
 import logo from '@/assets/logo.png'
+import mountainVibe from '@/assets/dest-mountains.jpg'
+import natureVibe from '@/assets/dest-lakes.jpg'
 import { Avatar } from '@/components/Avatar'
 import { useAuthStore } from '@/store/authStore'
 import { useTripStore } from '@/store/tripStore'
@@ -58,14 +61,65 @@ interface ChatSession {
 
 const EMPTY_SLOTS: PlannerSlots = { destination: null, travelStyle: null, travelers: null, budget: null }
 
+// The four things the planner needs before it can suggest a plan — shown as
+// a scannable checklist on the very first turn, ahead of Gemini asking for
+// them one by one in the conversation.
+const INTRO_PROMPTS = [
+  { icon: MapPin, label: 'Where do you want to go?' },
+  { icon: Users, label: "Who's coming with you?" },
+  { icon: IndianRupee, label: "What's your budget?" },
+  { icon: Heart, label: 'Any vibe or experience in mind?' },
+]
+
 // One-tap conversation starters — still go through the real Gemini chat
 // (not a shortcut around it), just pre-fills a natural first message so
-// typing isn't required to get going.
-const STARTER_SUGGESTIONS = [
-  { label: 'Beach getaway', icon: Waves, text: 'I want a relaxing beach getaway for 2 people, budget around ₹25,000' },
-  { label: 'Mountain adventure', icon: Mountain, text: 'An adventurous mountain trip with 4 friends, budget around ₹40,000' },
-  { label: 'Cultural city break', icon: Landmark, text: 'A cultural city trip for 2 people, budget around ₹50,000' },
-  { label: 'Surprise me', icon: Compass, text: 'Surprise me with a good destination for 3 people, budget around ₹30,000' },
+// typing isn't required to get going. `image` tiles are temporary reused
+// stock photos standing in until real per-vibe photography is supplied;
+// `gradient` tiles are an honest placeholder where no photo exists yet.
+const VIBE_TILES = [
+  {
+    label: 'Beach Escape',
+    emoji: '🏖️',
+    text: 'I want a relaxing beach getaway for 2 people, budget around ₹25,000',
+    gradient: 'from-sky to-ocean',
+  },
+  {
+    label: 'Mountain Adventure',
+    emoji: '⛰️',
+    text: 'An adventurous mountain trip with 4 friends, budget around ₹40,000',
+    image: mountainVibe,
+  },
+  {
+    label: 'City Break',
+    emoji: '🏙️',
+    text: 'A cultural city trip for 2 people, budget around ₹50,000',
+    gradient: 'from-lavender-dark to-navy',
+  },
+  {
+    label: 'Backpacking',
+    emoji: '🎒',
+    text: 'A budget backpacking trip for 1 person, exploring off-the-beaten-path spots',
+    gradient: 'from-gold-dark to-forest',
+  },
+  {
+    label: 'Nature & Wildlife',
+    emoji: '🌿',
+    text: 'A nature and wildlife trip for 2 people, budget around ₹35,000',
+    image: natureVibe,
+  },
+  {
+    label: 'Surprise Me',
+    emoji: '🎈',
+    text: 'Surprise me with a good destination for 3 people, budget around ₹30,000',
+    gradient: 'from-gold to-sea',
+  },
+]
+
+const STARTER_CHIPS = [
+  { label: 'Weekend Getaway', icon: Plane, text: 'Plan a short weekend getaway for me' },
+  { label: 'Family Trip', icon: Users, text: 'Plan a family trip everyone will enjoy' },
+  { label: 'Friends Trip', icon: PartyPopper, text: 'Plan a fun trip for a group of friends' },
+  { label: 'Couple Trip', icon: Heart, text: 'Plan a romantic trip for two' },
 ]
 
 // Contextual quick-answer chips — shown for whichever of these three fields
@@ -476,29 +530,84 @@ export function AiTripChat() {
         <div className="flex flex-col overflow-hidden border-r border-mist">
           <div ref={scrollRef} className="scrollbar-none flex-1 overflow-y-auto px-6 py-6">
             <div className="flex flex-col gap-4">
-              {messages.map((message) => (
-                <div key={message.id} className="flex items-start gap-2.5">
-                  {message.from === 'ai' && (
-                    <img src={logo} alt="TripSphere" className="h-8 w-8 shrink-0 rounded-full" />
-                  )}
-                  <div className={message.from === 'user' ? 'ml-auto' : ''}>
-                    <ChatBubble from={message.from}>
-                      <span className="whitespace-pre-line">{message.text}</span>
-                    </ChatBubble>
+              {messages.map((message) => {
+                if (message.id === 'greeting' && messages.length === 1 && !plan) {
+                  return (
+                    <div key={message.id} className="flex items-start gap-2.5">
+                      <img src={logo} alt="TripSphere" className="h-8 w-8 shrink-0 rounded-full" />
+                      <div className="max-w-lg rounded-2xl bg-gradient-to-br from-lavender/20 via-mist/45 to-sky/15 p-5">
+                        <p className="flex items-center gap-1.5 text-base font-bold text-ink">
+                          <Sparkles className="h-4 w-4 text-gold" />
+                          Let&rsquo;s plan something unforgettable.
+                        </p>
+                        <p className="mt-1 text-sm text-slate">Tell me about the journey you&rsquo;re imagining.</p>
+                        <div className="mt-4 flex flex-col gap-2.5">
+                          {INTRO_PROMPTS.map((item) => (
+                            <p key={item.label} className="flex items-center gap-2.5 text-sm text-ink">
+                              <item.icon className="h-4 w-4 shrink-0 text-slate" />
+                              {item.label}
+                            </p>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                }
+                return (
+                  <div key={message.id} className="flex items-start gap-2.5">
+                    {message.from === 'ai' && (
+                      <img src={logo} alt="TripSphere" className="h-8 w-8 shrink-0 rounded-full" />
+                    )}
+                    <div className={message.from === 'user' ? 'ml-auto' : ''}>
+                      <ChatBubble from={message.from}>
+                        <span className="whitespace-pre-line">{message.text}</span>
+                      </ChatBubble>
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
 
               {!thinking && messages.length === 1 && !plan && (
-                <div className="ml-10 flex flex-col gap-1.5">
-                  <p className="text-xs text-slate">Pick one, or describe your trip yourself:</p>
+                <div className="ml-10 flex flex-col gap-3">
+                  <div>
+                    <p className="text-xs font-medium text-slate">Or choose a vibe to get started</p>
+                    <div className="mt-2 grid grid-cols-3 gap-2">
+                      {VIBE_TILES.map((tile) => (
+                        <button
+                          key={tile.label}
+                          type="button"
+                          onClick={() => handleSend(tile.text)}
+                          className="group relative aspect-[4/3] overflow-hidden rounded-xl text-left"
+                        >
+                          {tile.image ? (
+                            <img
+                              src={tile.image}
+                              alt=""
+                              className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                            />
+                          ) : (
+                            <div
+                              className={`absolute inset-0 flex items-center justify-center bg-gradient-to-br text-2xl transition-transform duration-300 group-hover:scale-105 ${tile.gradient}`}
+                            >
+                              {tile.emoji}
+                            </div>
+                          )}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/5 to-transparent" />
+                          <span className="absolute bottom-1.5 left-2 text-[11px] font-semibold text-white drop-shadow-sm">
+                            {tile.emoji} {tile.label}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   <div className="flex flex-wrap gap-2">
-                    {STARTER_SUGGESTIONS.map((suggestion) => (
+                    {STARTER_CHIPS.map((chip) => (
                       <QuickReplyChip
-                        key={suggestion.label}
-                        label={suggestion.label}
-                        icon={suggestion.icon}
-                        onClick={() => handleSend(suggestion.text)}
+                        key={chip.label}
+                        label={chip.label}
+                        icon={chip.icon}
+                        onClick={() => handleSend(chip.text)}
                       />
                     ))}
                   </div>

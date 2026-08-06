@@ -144,13 +144,13 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
           <motion.div
             variants={fadeIn}
             onAnimationComplete={handleEntranceComplete}
-            className="relative mt-2 h-px w-44 bg-white/15"
+            className="relative mt-2 h-px w-44 overflow-hidden bg-white/15"
           >
             <motion.div
-              className="absolute inset-y-0 left-1/2 w-16 -translate-x-1/2 bg-gradient-to-r from-transparent via-sky to-transparent"
-              initial={{ opacity: 0 }}
-              animate={entered ? { opacity: 1 } : undefined}
-              transition={{ duration: 0.6, ease: 'easeInOut' }}
+              className="absolute inset-y-0 w-16 bg-gradient-to-r from-transparent via-sky to-transparent"
+              initial={{ x: '-100%' }}
+              animate={entered ? { x: '350%' } : undefined}
+              transition={{ duration: 1.1, ease: 'easeInOut', repeat: Infinity, repeatDelay: 0.25 }}
             />
           </motion.div>
         </div>
@@ -171,13 +171,6 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
                 </span>
               </div>
             ))}
-          </div>
-        </motion.div>
-
-        {/* Bottom rule */}
-        <motion.div variants={fadeIn} className="absolute inset-x-0 bottom-6 flex justify-center px-10 sm:bottom-9">
-          <div className="relative h-px w-full max-w-sm bg-white/10">
-            <div className="absolute inset-y-0 left-1/2 w-24 -translate-x-1/2 bg-gradient-to-r from-transparent via-sky to-transparent sm:w-32" />
           </div>
         </motion.div>
       </div>

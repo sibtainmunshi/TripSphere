@@ -1,6 +1,7 @@
 import uuid
 
 from django.conf import settings
+from django.core.validators import MinValueValidator
 from django.db import models
 
 
@@ -18,7 +19,9 @@ class Trip(models.Model):
     member_count = models.PositiveIntegerField(default=1)
     trip_type = models.CharField(max_length=50, blank=True)
     description = models.TextField(blank=True)
-    budget = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    budget = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(0)],
+    )
     lat = models.FloatField(null=True, blank=True)
     lon = models.FloatField(null=True, blank=True)
     cover_image_url = models.URLField(blank=True)

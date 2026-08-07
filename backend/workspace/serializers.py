@@ -44,6 +44,32 @@ class TripSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ('id', 'createdAt')
 
+    def validate(self, attrs):
+        start_date = attrs.get('start_date', getattr(self.instance, 'start_date', None))
+        end_date = attrs.get('end_date', getattr(self.instance, 'end_date', None))
+        if start_date and end_date and end_date < start_date:
+            raise serializers.ValidationError({'endDate': 'End date cannot be before the start date.'})
+
+        budget = attrs.get('budget')
+        if budget is not None and budget < 0:
+            raise serializers.ValidationError({'budget': 'Budget cannot be negative.'})
+
+        members_data = attrs.get('members')
+        if members_data:
+            request = self.context.get('request')
+            seen_emails = set()
+            if request and request.user.is_authenticated:
+                seen_emails.add(request.user.email.lower())
+            for member in members_data:
+                email = (member.get('email') or '').lower()
+                if not email:
+                    continue
+                if email in seen_emails:
+                    raise serializers.ValidationError({'members': f'"{member.get("email")}" is already a member of this trip.'})
+                seen_emails.add(email)
+
+        return attrs
+
     def to_representation(self, instance):
         rep = super().to_representation(instance)
         # Report whichever is larger: the stated headcount hint, or the

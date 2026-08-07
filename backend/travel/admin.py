@@ -1,3 +1,8 @@
 from django.contrib import admin
 
-# Register your models here.
+from .models import RestaurantReservation, StayBooking, TransportBooking, TravelDocument
+
+admin.site.register(StayBooking)
+admin.site.register(TransportBooking)
+admin.site.register(RestaurantReservation)
+admin.site.register(TravelDocument)

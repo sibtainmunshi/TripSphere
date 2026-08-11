@@ -451,12 +451,12 @@ export function AiTripChat() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b border-mist px-8 py-5">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-mist px-4 py-4 sm:px-8 sm:py-5">
         <div>
           <h1 className="text-xl font-bold text-ink">AI Trip Planner</h1>
           <p className="text-sm text-slate">Your personal travel assistant</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <div className="relative">
             <button
               onClick={() => setHistoryOpen((open) => !open)}
@@ -470,7 +470,7 @@ export function AiTripChat() {
             </button>
 
             {historyOpen && (
-              <div className="absolute top-full right-0 z-10 mt-1 max-h-80 w-72 overflow-y-auto rounded-lg border border-mist bg-white p-2 shadow-lg">
+              <div className="absolute top-full right-0 z-10 mt-1 max-h-80 w-72 max-w-[85vw] overflow-y-auto rounded-lg border border-mist bg-white p-2 shadow-lg">
                 {sortedSessions.length === 0 ? (
                   <p className="p-3 text-sm text-slate">No past conversations yet.</p>
                 ) : (
@@ -526,9 +526,13 @@ export function AiTripChat() {
         <StepIndicator currentStep={currentStep} />
       </div>
 
-      <div className="grid flex-1 grid-cols-2 overflow-hidden">
-        <div className="flex flex-col overflow-hidden border-r border-mist">
-          <div ref={scrollRef} className="scrollbar-none flex-1 overflow-y-auto px-6 py-6">
+      {/* Mobile: chat fills the screen until a plan exists, then the plan
+          preview takes over full-screen (see `plan ?` below) — a side-by-side
+          grid can't work at phone widths. From lg: up both panes show at
+          once, same as always, regardless of whether a plan exists yet. */}
+      <div className="grid flex-1 grid-cols-1 overflow-hidden lg:grid-cols-2">
+        <div className={`${plan ? 'hidden' : 'flex'} flex-col overflow-hidden border-mist lg:flex lg:border-r`}>
+          <div ref={scrollRef} className="scrollbar-none flex-1 overflow-y-auto px-4 py-6 sm:px-6">
             <div className="flex flex-col gap-4">
               {messages.map((message) => {
                 if (message.id === 'greeting' && messages.length === 1 && !plan) {
@@ -571,7 +575,7 @@ export function AiTripChat() {
                 <div className="ml-10 flex flex-col gap-3">
                   <div>
                     <p className="text-xs font-medium text-slate">Or choose a vibe to get started</p>
-                    <div className="mt-2 grid grid-cols-3 gap-2">
+                    <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
                       {VIBE_TILES.map((tile) => (
                         <button
                           key={tile.label}
@@ -702,7 +706,7 @@ export function AiTripChat() {
           </div>
         </div>
 
-        <div className="overflow-hidden bg-cream/40">
+        <div className={`${plan ? 'block' : 'hidden'} overflow-hidden bg-cream/40 lg:block`}>
           {plan ? (
             <TripPlanPreview
               plan={plan}

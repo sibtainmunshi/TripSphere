@@ -8,6 +8,7 @@ import {
   Settings as SettingsIcon,
   Sparkles,
   User as UserIcon,
+  X,
 } from 'lucide-react'
 import logo from '@/assets/logo.png'
 import { Avatar } from './Avatar'
@@ -28,7 +29,14 @@ const NAV_ITEMS_BOTTOM = [
 // badge only ever shows once something actually needs the user's attention.
 const NOTIFICATION_COUNT = 0
 
-export function Sidebar() {
+interface SidebarProps {
+  /** Mobile slide-in drawer state — irrelevant at `lg:` and up, where the
+   * sidebar is always shown as a static rail regardless of this prop. */
+  mobileOpen?: boolean
+  onClose?: () => void
+}
+
+export function Sidebar({ mobileOpen = false, onClose }: SidebarProps = {}) {
   const navigate = useNavigate()
   const user = useAuthStore((state) => state.user)
   const clearSession = useAuthStore((state) => state.clearSession)
@@ -41,11 +49,24 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="flex h-screen w-64 shrink-0 flex-col border-r border-mist bg-white">
-      <NavLink to="/" className="flex items-center gap-2.5 px-6 py-6">
-        <img src={logo} alt="" className="h-8 w-8" />
-        <span className="text-lg font-bold text-navy">TripSphere</span>
-      </NavLink>
+    <aside
+      className={`fixed inset-y-0 left-0 z-50 flex h-screen w-72 max-w-[85%] shrink-0 flex-col border-r border-mist bg-white transition-transform duration-200 ease-out lg:static lg:z-auto lg:w-64 lg:max-w-none lg:translate-x-0 ${
+        mobileOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'
+      }`}
+    >
+      <div className="flex items-center justify-between px-6 py-6">
+        <NavLink to="/" onClick={onClose} className="flex items-center gap-2.5">
+          <img src={logo} alt="" className="h-8 w-8" />
+          <span className="text-lg font-bold text-navy">TripSphere</span>
+        </NavLink>
+        <button
+          onClick={onClose}
+          aria-label="Close menu"
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-slate hover:bg-cream hover:text-ink lg:hidden"
+        >
+          <X className="h-4.5 w-4.5" />
+        </button>
+      </div>
 
       <nav className="flex flex-1 flex-col gap-1 px-3">
         {NAV_ITEMS_TOP.map((item) => (
@@ -53,6 +74,7 @@ export function Sidebar() {
             key={item.to}
             to={item.to}
             end={item.end}
+            onClick={onClose}
             className={({ isActive }) =>
               `flex items-center gap-3 rounded-lg px-3.5 py-2.5 text-sm font-medium transition-colors ${
                 isActive ? 'bg-ocean/10 text-ocean' : 'text-slate hover:bg-cream hover:text-ink'
@@ -94,6 +116,7 @@ export function Sidebar() {
             key={item.to}
             to={item.to}
             end={item.end}
+            onClick={onClose}
             className={({ isActive }) =>
               `flex items-center gap-3 rounded-lg px-3.5 py-2.5 text-sm font-medium transition-colors ${
                 isActive ? 'bg-ocean/10 text-ocean' : 'text-slate hover:bg-cream hover:text-ink'

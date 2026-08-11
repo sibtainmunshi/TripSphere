@@ -5,6 +5,7 @@ import { useAuthStore } from '@/store/authStore'
 import { useTripStore } from '@/store/tripStore'
 import { useChatMessages } from '@/hooks/useChatMessages'
 import { sendMessage } from '@/services/chatApi'
+import { setLastReadAt } from '@/utils/chatReadState'
 
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })
@@ -22,6 +23,13 @@ export function ChatPage() {
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
   }, [messages])
+
+  // Being on this page means the user has seen everything currently loaded —
+  // clears the sidebar's unread dot (see useUnreadChat) as new messages arrive.
+  useEffect(() => {
+    if (!tripId || messages.length === 0) return
+    setLastReadAt(tripId, user?.id, messages[messages.length - 1].createdAt)
+  }, [tripId, user?.id, messages])
 
   if (!tripId) return null
 

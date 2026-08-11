@@ -109,7 +109,7 @@ export function TransportSection({ tripId, destination, onChange }: TransportSec
       {isAdding && (
         <div className="mb-4 flex flex-col gap-3 rounded-xl border border-mist p-4">
           {error && <p className="text-xs text-red-600">{error}</p>}
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {MODES.map((modeOption) => (
               <button
                 key={modeOption.value}
@@ -135,7 +135,7 @@ export function TransportSection({ tripId, destination, onChange }: TransportSec
           />
 
           {routeType && mode === 'search' ? (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <RoutePlacePicker
                 type={routeType}
                 label="From"
@@ -150,7 +150,7 @@ export function TransportSection({ tripId, destination, onChange }: TransportSec
               />
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <TextField
                 id="fromLocation"
                 label="From"

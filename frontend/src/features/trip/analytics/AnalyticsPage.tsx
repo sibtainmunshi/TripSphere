@@ -16,6 +16,11 @@ export function AnalyticsPage() {
   const { tripId } = useParams<{ tripId: string }>()
   const [data, setData] = useState<TripAnalytics | null>(null)
   const [error, setError] = useState(false)
+  // Plotly layout (margin, height) is imperative JS, not CSS — Tailwind
+  // breakpoints can't reach it, so the "Who Paid What" chart's left margin
+  // (room for member-name labels) needs its own resize-driven narrow check
+  // to stop eating most of the plot width on a phone.
+  const [isNarrow, setIsNarrow] = useState(() => window.innerWidth < 640)
 
   useEffect(() => {
     if (!tripId) return
@@ -23,6 +28,12 @@ export function AnalyticsPage() {
       .then(setData)
       .catch(() => setError(true))
   }, [tripId])
+
+  useEffect(() => {
+    const onResize = () => setIsNarrow(window.innerWidth < 640)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
 
   if (!tripId) return null
 
@@ -161,9 +172,9 @@ export function AnalyticsPage() {
                 },
               ]}
               layout={{
-                margin: { t: 10, b: 30, l: 120, r: 10 },
+                margin: { t: 10, b: 30, l: isNarrow ? 70 : 120, r: 10 },
                 height: Math.max(180, data.memberContributions.length * 50),
-                font: { family: 'Manrope, sans-serif', size: 12 },
+                font: { family: 'Manrope, sans-serif', size: isNarrow ? 10 : 12 },
               }}
               config={{ displayModeBar: false, responsive: true }}
               style={{ width: '100%' }}

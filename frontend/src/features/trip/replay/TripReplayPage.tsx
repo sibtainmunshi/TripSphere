@@ -77,7 +77,7 @@ export function TripReplayPage() {
           <div className="absolute inset-0 bg-black/50" />
           <div className="relative px-6">
             <p className="text-sm tracking-wide text-white/70 uppercase">Trip Replay</p>
-            <h1 className="font-script mt-2 text-6xl font-bold">
+            <h1 className="font-script mt-2 text-4xl font-bold sm:text-5xl lg:text-6xl">
               {trip.name} {getDestinationEmoji(trip.destination)}
             </h1>
             <p className="mt-3 text-white/80">
@@ -194,7 +194,7 @@ export function TripReplayPage() {
     key: 'thanks',
     content: (
       <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
-        <p className="font-script text-5xl font-bold text-ink">Thanks for the memories</p>
+        <p className="font-script text-3xl font-bold text-ink sm:text-4xl lg:text-5xl">Thanks for the memories</p>
         <p className="text-sm text-slate">This trip lives on in TripSphere — come back to it anytime.</p>
         <Link
           to="/trips/new/manual"

@@ -106,12 +106,12 @@ export function ManualTripWizard() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b border-mist px-8 py-5">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-mist px-4 py-4 sm:px-8 sm:py-5">
         <div>
           <h1 className="text-xl font-bold text-ink">Create New Trip</h1>
           <p className="text-sm text-slate">Fill in the details to create your trip workspace</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <button className="flex items-center gap-1.5 rounded-lg border border-mist px-3.5 py-2 text-sm font-medium text-ink transition-colors hover:bg-cream">
             <Save className="h-4 w-4" />
             Save as Draft
@@ -127,8 +127,11 @@ export function ManualTripWizard() {
         <StepIndicator currentStep={step} steps={STEP_LABELS} />
       </div>
 
-      <div className="grid flex-1 grid-cols-2 gap-6 overflow-hidden">
-        <div className="scrollbar-none overflow-y-auto py-6 pr-2 pl-8">
+      {/* Mobile: single column, the whole grid scrolls as one page — a
+          side-by-side split with its own two independently-scrolling panes
+          only works from lg: up, where there's room for both at once. */}
+      <div className="grid flex-1 grid-cols-1 gap-6 overflow-y-auto lg:grid-cols-2 lg:overflow-hidden">
+        <div className="scrollbar-none py-6 pr-4 pl-4 sm:pl-8 lg:overflow-y-auto lg:pr-2">
           {step === 1 && <TripDetailsStep value={details} onChange={patchDetails} errors={errors} />}
           {step === 2 && (
             <AddMembersStep members={members} onAdd={handleAddMember} onRemove={handleRemoveMember} />
@@ -204,7 +207,7 @@ export function ManualTripWizard() {
           </div>
         </div>
 
-        <div className="scrollbar-none overflow-y-auto py-6 pr-8 pl-2">
+        <div className="scrollbar-none py-6 pr-4 pl-4 sm:pr-8 lg:overflow-y-auto lg:pl-2">
           <TripPreviewCard
             name={details.name}
             destination={details.destination}

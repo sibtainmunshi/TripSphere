@@ -74,7 +74,7 @@ export function DestinationIdeas({ onPick }: DestinationIdeasProps) {
         <Sparkles className="h-3.5 w-3.5 text-ocean" />
         Destination Ideas
       </p>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
         <div className="flex flex-col gap-1">
           <label className="text-xs text-slate">Budget/day (₹)</label>
           <input

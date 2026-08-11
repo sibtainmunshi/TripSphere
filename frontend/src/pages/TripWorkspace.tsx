@@ -102,7 +102,7 @@ export function TripWorkspace() {
                 }
               }}
               aria-label="Notifications"
-              className="relative flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-ink transition-colors hover:bg-white"
+              className="relative flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-ink transition-colors hover:bg-white"
             >
               <Bell className="h-4 w-4" />
               {unreadCount > 0 && (
@@ -112,7 +112,7 @@ export function TripWorkspace() {
               )}
             </button>
             {notificationsOpen && (
-              <div className="absolute top-full right-0 z-20 mt-2 w-72 overflow-hidden rounded-xl border border-mist bg-white shadow-lg">
+              <div className="absolute top-full right-0 z-20 mt-2 w-72 max-w-[85vw] overflow-hidden rounded-xl border border-mist bg-white shadow-lg">
                 {notifications.length === 0 ? (
                   <p className="p-4 text-sm text-slate">You&rsquo;re all caught up — no notifications yet.</p>
                 ) : (
@@ -145,12 +145,12 @@ export function TripWorkspace() {
                 setNotificationsOpen(false)
               }}
               aria-label="More options"
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-ink transition-colors hover:bg-white"
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-ink transition-colors hover:bg-white"
             >
               <MoreHorizontal className="h-4 w-4" />
             </button>
             {moreOpen && (
-              <div className="absolute top-full right-0 z-20 mt-2 w-52 overflow-hidden rounded-xl border border-mist bg-white shadow-lg">
+              <div className="absolute top-full right-0 z-20 mt-2 w-52 max-w-[70vw] overflow-hidden rounded-xl border border-mist bg-white shadow-lg">
                 <Link
                   to={`/trips/${trip.id}/settings`}
                   onClick={() => setMoreOpen(false)}
@@ -201,7 +201,7 @@ export function TripWorkspace() {
           transition={{ duration: 0.5, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
           className="relative mx-auto flex h-full max-w-5xl flex-col justify-end px-6 pb-6 text-white sm:px-8"
         >
-          <h1 className="font-script text-5xl leading-tight font-bold drop-shadow-sm sm:text-6xl">
+          <h1 className="font-script text-3xl leading-tight font-bold drop-shadow-sm sm:text-5xl lg:text-6xl">
             {trip.name} {getDestinationEmoji(trip.destination)}
           </h1>
           <p className="mt-1 text-sm text-white/80">

@@ -9,3 +9,9 @@ Thumbs.db
 
 # frontend/ and backend/ each have their own .gitignore for
 # node_modules/, venv/, .env, build artifacts, etc.
+
+# Local design-reference/scratch images — not used by the app itself
+# (real app assets live under frontend/src/assets and frontend/public).
+/branding-logo-pages-images/
+/images/
+/splash-screen/
